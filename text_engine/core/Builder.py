@@ -20,7 +20,7 @@ class BuilderResult(Result_Unit):
     rule: Builder
 
     def __str__(self):
-        return super().__str__() + self.__str_body__()
+        return super().__str__() + "(" + self.rule.name + ")" + self.__str_body__()
 
     def build(self, context: Context):
         sub_context = context.sub_context(__class__=self.rule.name)

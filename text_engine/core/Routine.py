@@ -20,7 +20,7 @@ class RoutineResult(Result_Unit):
     rule: Routine
 
     def __str__(self):
-        return super().__str__() + self.__str_body__()
+        return super().__str__() + "(" + self.rule.name + ")" + self.__str_body__()
 
     def build(self, context: Context):
         super().build(context)
