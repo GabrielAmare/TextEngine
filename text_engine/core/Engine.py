@@ -12,6 +12,18 @@ class InvalidASTError(Exception):
     pass
 
 
+class EngineTokenizeError(Exception):
+    def __init__(self, tokens, tokenize_error=None):
+        self.tokens = tokens
+        self.tokenize_error = tokenize_error
+
+    def __str__(self):
+        return "\n".join(
+            f"{token.pattern.name.ljust(10)} | {repr(token.content)}"
+            for token in self.tokens
+        ) + ("\n\n" + str(self.tokenize_error) if self.tokenize_error else "")
+
+
 class Engine:
     lexer: Lexer
     parser: Parser
@@ -24,10 +36,12 @@ class Engine:
 
     def read(self, text: str, identifier: str = Identified.ALL, index: int = 0):
 
+        tokens = []
         try:
-            tokens = self.lexer.tokenize(text, index, 0)
+            for token in self.lexer.tokenize(text, index, 0):
+                tokens.append(token)
         except TokenizeError as e:
-            raise e
+            raise EngineTokenizeError(tokens, e)
 
         for result in self.parser.parse(tokens, 0, identifier):
             context = Context()
