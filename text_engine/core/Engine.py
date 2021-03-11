@@ -30,16 +30,19 @@ class Engine:
             raise e
 
         for result in self.parser.parse(tokens, 0, identifier):
-            if result and result.at_position == 0 and result.to_position == len(tokens):
-                context = Context()
+            context = Context()
 
-                try:
-                    result.build(context)
-                except BuildResultError as e:
-                    raise e
+            try:
+                result.build(context)
+            except BuildResultError as e:
+                raise e
 
-                ast = context.pile[-1]
-                if ast:
+            ast = context.pile[-1]
+
+            if ast:
+                if self.astb is None:
                     return ast
                 else:
-                    raise InvalidASTError
+                    return self.astb(ast)
+            else:
+                raise InvalidASTError
