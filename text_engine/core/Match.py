@@ -19,15 +19,21 @@ class Match(Rule, Identified):
                 result = MatchResult(rule=self, token=token)
                 return result
 
+            count = 0
+            result = None
             for builder in parser.get_all_matching_builders(self.identifier):
                 result = builder.parse(tokens, position, parser)
                 if result:
                     return result
+                else:
+                    count += 1
 
             return Result_Error(
                 rule=self,
                 at_position=position,
-                reason=f"No matching pattern, routine or builder for {repr(self.identifier)} on {repr(token.pattern.identifier)}"
+                reason=f"Token {repr(token.pattern.identifier)} doesn't match {repr(self.identifier)}"
+                       f", {count} routine or builder correponding to {repr(self.identifier)} (no match)",
+                result=result if count == 1 else None
             )
         else:
             return Result_Error(
