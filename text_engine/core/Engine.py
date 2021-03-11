@@ -1,5 +1,6 @@
 from .Lexer import Lexer, TokenizeError
 from .Parser import Parser
+from .ASTB import ASTB
 from ..base import Identified, Context
 
 
@@ -14,10 +15,12 @@ class InvalidASTError(Exception):
 class Engine:
     lexer: Lexer
     parser: Parser
+    astb: ASTB
 
-    def __init__(self, lexer: Lexer, parser: Parser):
+    def __init__(self, lexer: Lexer, parser: Parser, astb: ASTB = None):
         self.lexer = lexer
         self.parser = parser
+        self.astb = astb
 
     def read(self, text: str, identifier: str = Identified.ALL, index: int = 0):
 
