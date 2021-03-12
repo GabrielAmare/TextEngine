@@ -13,8 +13,8 @@ class In(Rule_Unit):
                "\n".join(f"  {line}" for line in str(self.rule).split("\n")) + \
                "\n]"
 
-    def parse(self, tokens: list, position: int, parser):
-        result = self.rule.parse(tokens, position, parser)
+    def parse(self, tokens: list, position: int, parser, backward: bool = False):
+        result = self.rule.parse(tokens, position, parser, backward)
         if result:
             return InResult(rule=self, result=result)
         else:

@@ -3,8 +3,8 @@ from .Parser import Parser
 
 
 class Builder(Rule_Main):
-    def parse(self, tokens: list, position: int, parser: Parser):
-        result = self.rule.parse(tokens, position, parser)
+    def parse(self, tokens: list, position: int, parser: Parser, backward: bool = False):
+        result = self.rule.parse(tokens, position, parser, backward)
         if result:
             return BuilderResult(rule=self, result=result)
         else:

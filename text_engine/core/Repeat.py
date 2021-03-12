@@ -3,17 +3,18 @@ from .Parser import Parser
 
 
 class Repeat(Rule_Unit):
-    def parse(self, tokens: list, position: int, parser: Parser):
+    def parse(self, tokens: list, position: int, parser: Parser, backward: bool = False):
         results = RepeatResult(rule=self, at_position=position)
 
         while True:
-            result = self.rule.parse(tokens, results.to_position, parser)
+            r_position = results.at_position if backward else results.to_position
+            result = self.rule.parse(tokens, r_position, parser, backward)
 
             if not result:
                 results.error = result
                 break
 
-            results.append(result)
+            results.append(result, backward)
 
         return results
 

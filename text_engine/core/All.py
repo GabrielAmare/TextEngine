@@ -1,19 +1,21 @@
-from ..base import Rule_List, Result_List, Result_Error
+from ..base import Rule_List, Result_List
 from .Parser import Parser
 
 
 class All(Rule_List):
-    def parse(self, tokens: list, position: int, parser: Parser):
+    def parse(self, tokens: list, position: int, parser: Parser, backward: bool = False):
+        rules = reversed(self.rules) if backward else self.rules
+
         results = AllResult(rule=self, at_position=position)
 
-        for rule in self.rules:
-            result = rule.parse(tokens, results.to_position, parser)
+        for rule in rules:
+            r_position = results.at_position if backward else results.to_position
+            result = rule.parse(tokens, r_position, parser, backward)
+
+            results.append(result, backward)
 
             if not result:
-                results.append(result)
                 break
-
-            results.append(result)
 
         return results
 

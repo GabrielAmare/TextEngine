@@ -1,5 +1,5 @@
 class Rule:
-    def parse(self, tokens: list, position: int, parser):
+    def parse(self, tokens: list, position: int, parser, backward: bool = False):
         raise NotImplementedError
 
     def __and__(self, other):

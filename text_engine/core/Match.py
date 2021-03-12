@@ -12,9 +12,10 @@ class Match(Rule, Identified):
     def __str__(self):
         return self.__class__.__name__ + "(" + self.identifier + ")"
 
-    def parse(self, tokens: List[Token], position: int, parser: Parser):
-        if 0 <= position < len(tokens):
-            token = tokens[position]
+    def parse(self, tokens: List[Token], position: int, parser: Parser, backward: bool = False):
+        t_position = position - 1 if backward else position
+        if 0 <= t_position < len(tokens):
+            token = tokens[t_position]
             if token.pattern <= self.identifier:
                 result = MatchResult(rule=self, token=token)
                 return result
@@ -22,7 +23,7 @@ class Match(Rule, Identified):
             count = 0
             result = None
             for builder in parser.get_all_matching_builders(self.identifier):
-                result = builder.parse(tokens, position, parser)
+                result = builder.parse(tokens, position, parser, backward)
                 if result:
                     return result
                 else:

@@ -51,8 +51,11 @@ def match(obj: Union[Match, Pattern, str]):
         raise TypeError(obj)
 
 
-def sep_by(rule, sep):
-    return All(rule, Repeat(All(match(sep), rule)))
+def sep_by(rule, sep, backward=False):
+    if backward:
+        return All(Repeat(All(rule, match(sep))), rule)
+    else:
+        return All(rule, Repeat(All(match(sep), rule)))
 
 
 def wrapped_by(rule, prefix, suffix):

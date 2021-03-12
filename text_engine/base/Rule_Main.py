@@ -13,5 +13,5 @@ class Rule_Main(Rule_Unit, Identified):
                "\n".join(f"  {line}" for line in str(self.rule).split("\n")) + \
                "\n]"
 
-    def parse(self, tokens: list, position: int, parser):
+    def parse(self, tokens: list, position: int, parser, backward: bool = False):
         raise NotImplementedError

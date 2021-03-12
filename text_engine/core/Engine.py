@@ -34,7 +34,7 @@ class Engine:
         self.parser = parser
         self.astb = astb
 
-    def read(self, text: str, identifier: str = Identified.ALL, index: int = 0):
+    def read(self, text: str, identifier: str = Identified.ALL, index: int = 0, backward=False):
 
         tokens = []
         try:
@@ -43,7 +43,9 @@ class Engine:
         except TokenizeError as e:
             raise EngineTokenizeError(tokens, e)
 
-        for result in self.parser.parse(tokens, 0, identifier):
+        start_position = len(tokens) if backward else 0
+
+        for result in self.parser.parse(tokens, start_position, identifier, backward):
             context = Context()
 
             try:

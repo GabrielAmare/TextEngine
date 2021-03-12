@@ -3,13 +3,13 @@ from .Parser import Parser
 
 
 class Optional(Rule_Unit):
-    def parse(self, tokens: list, position: int, parser: Parser):
+    def parse(self, tokens: list, position: int, parser: Parser, backward: bool = False):
         results = OptionalResult(rule=self, at_position=position)
 
-        result = self.rule.parse(tokens, position, parser)
+        result = self.rule.parse(tokens, position, parser, backward)
 
         if result:
-            results.append(result)
+            results.append(result, backward)
 
         return results
 

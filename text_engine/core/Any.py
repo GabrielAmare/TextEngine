@@ -3,10 +3,10 @@ from .Parser import Parser
 
 
 class Any(Rule_List):
-    def parse(self, tokens: list, position: int, parser: Parser):
+    def parse(self, tokens: list, position: int, parser: Parser, backward: bool = False):
         errors = Result_List(rule=self, at_position=position)
         for rule in self.rules:
-            result = rule.parse(tokens, position, parser)
+            result = rule.parse(tokens, position, parser, backward)
             if result:
                 return AnyResult(rule=self, result=result)
             else:
