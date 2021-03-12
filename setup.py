@@ -17,7 +17,7 @@ pckg_dir = os.path.abspath(os.curdir)
 
 setuptools.setup(
     name="TextEngine",
-    version="1.0.0",
+    version="1.0.1",
     author="Gabriel Amare",
     author_email="gabriel.amare.31@gmail.com",
     description="Easy implementation of lexical & syntax analysis for formal language analysis",
