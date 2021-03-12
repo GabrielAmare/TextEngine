@@ -91,17 +91,17 @@ lexer, parser, builder, engine = base(
     # OPERATORS
     [
         Pow,
-        match("L3").in_("*") & match("HAT") & match("L2").in_("*"),
-        match("L3").in_("*") & match("*.POWER").in_("*"),
+        match("L2").in_("*") & match("HAT") & match("L3").in_("*"),
+        match("L2").in_("*") & match("*.POWER").in_("*"),
     ],
     [
         Mul,
-        match("L2").in_("*") & match("STAR") & match("L1").in_("*"),
-        (match("Integer") | match("Decimal")).in_("*") & match("L1").in_("*")
+        match("L1").in_("*") & match("STAR") & match("L2").in_("*"),
+        (match("Integer") | match("Decimal")).in_("*") & match("L2").in_("*")
     ],
-    [Div, match("L2").in_("*") & match("SLASH") & match("L1").in_("*")],
-    [Add, match("L1").in_("*") & match("PLUS") & match("L0").in_("*")],
-    [Sub, match("L1").in_("*") & match("MINUS") & match("L0").in_("*")],
+    [Div, match("L1").in_("*") & match("SLASH") & match("L2").in_("*")],
+    [Add, match("L0").in_("*") & match("PLUS") & match("L1").in_("*")],
+    [Sub, match("L0").in_("*") & match("MINUS") & match("L1").in_("*")],
     # UNITS
     [Id, match("ID").in_("*")],
     [Integer, match("INTEGER").in_("*")],
@@ -131,21 +131,21 @@ parser.add_routine("L2", match("Pow") | match("L3"))
 parser.add_routine("L3", match("Id") | match("Integer") | match("Decimal") | match("BlocP"))
 
 if __name__ == "__main__":
-    text = True
-    while text:
-        text = input("please enter a formula : ")
-        if text:
-            result = engine.read(text)
-            if not result:
-                print("The formula have not been parsed correctly")
-            else:
-                print(repr(result))
-else:
-    text = "3 * x ^ 2 + ( 1 - 6 ) + 4"
+    text = "3 * x ^ 2 + 1 - 6 + 4"
 
-    result = engine.read(text)
+    result = engine.read(text, backward=True)
 
     print(text)
     print()
     print(result)
     print(repr(result))
+
+    text = True
+    while text:
+        text = input("please enter a formula : ")
+        if text:
+            result = engine.read(text, backward=True)
+            if not result:
+                print("The formula have not been parsed correctly")
+            else:
+                print(repr(result))

@@ -22,12 +22,14 @@ lexer.add_pattern("INT", mode="re", expr="[0-9]+", value=int)
 lexer.add_pattern("WHITESPACE", mode="re", expr="[ \t\n]+", flag=16, ignore=True, priority=1000)
 lexer.add_pattern("ERROR", mode="re", expr=".+", flag=16, priority=1000)
 
-parser.add_routine("INT_ENUM", match("INT").in_("items").sep_by("COMA"))
+parser.add_routine("INT_ENUM", match("INT").in_("items").sep_by("COMA", backward=True))
 
 parser.add_builder("INT_TUPLE", match("INT_ENUM").wrapped_by("LP", "RP"))
 parser.add_builder("INT_LIST", match("INT_ENUM").wrapped_by("LB", "RB"))
 
 if __name__ == '__main__':
-    ast = engine.read("[1, 2, 3, 4, 5, 6]")
+    ast = engine.read("[1, 2, 3, 4, 5, 6]", backward=True)
+    print(ast)
 
+    ast = engine.read("(0, 15678, 95, 484876, 05959595)", backward=True)
     print(ast)
