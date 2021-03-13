@@ -167,19 +167,9 @@ f(x, x, x) * f(y, y, y) ^ f(z, z, z)"""
     print(result)
     print(repr(result))
 
-    chart = {
-        "*": dict(bg="black", fg="white", bd=2, relief="sunken", font=("Consolas", 12, "bold"), padx=5, pady=5),
-        "ID": dict(fg="red"),
-        "INT": dict(fg="blue"),
-        "FLOAT": dict(fg="blue"),
-        "*.SYMBOL": dict(fg="orange"),
-        "*.POWER": dict(fg="purple"),
-    }
     text = "f(x, x, x) * f(y, y, y) ^ f(z, z, z)"
 
-    app = tkEngine(engine, text, chart, backward=True)
-
-    app.mainloop()
+    display(*engine.results(text, backward=True), no_keys=True, no_unused_matches=True)
 
     text = True
     while text:

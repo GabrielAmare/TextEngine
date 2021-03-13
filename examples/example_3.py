@@ -96,18 +96,14 @@ chart = {
 }
 
 if __name__ == '__main__':
-    # text = "y = x + 2\nz = x²+y²\nx = y/z"
-    # text = "3*x² + 6 + 2"
-    # text = "x^y^z"
-    # text = "(1-3x²)/(1+6x²)"
-    # text = "r = x^2+y^2"
-    # text = "y = f(x)\nz = g(x, y)"
-    # text = "0 = h(x², y², z²)"
-
-    text = "f(x, y, z)"
-
-    display(*engine.results(text, backward=True))
-
-    # app = tkEngine(engine, text, chart, backward=True)
-    #
-    # app.mainloop()
+    for text in [
+        "y = x + 2\nz = x²+y²\nx = y/z",
+        "3*x² + 6 + 2",
+        "x^y^z",
+        "(1-3x²)/(1+6x²)",
+        "r = x^2+y^2",
+        "y = f(x)\nz = g(x, y)",
+        "0 = h(x², y², z²)",
+        "f(x, y, z)"
+    ]:
+        display(engine.result(text, backward=True), no_keys=True, no_unused_matches=True)
