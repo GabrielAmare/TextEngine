@@ -34,8 +34,7 @@ class Engine:
         self.parser = parser
         self.astb = astb
 
-    def read(self, text: str, identifier: str = Identified.ALL, index: int = 0, backward=False):
-
+    def _make_tokens(self, text, index: int = 0):
         tokens = []
         try:
             for token in self.lexer.tokenize(text, index, 0):
@@ -43,16 +42,34 @@ class Engine:
         except TokenizeError as e:
             raise EngineTokenizeError(tokens, e)
 
+        return tokens
+
+    def _make_results(self, tokens, identifier: str = Identified.ALL, backward=False):
         start_position = len(tokens) if backward else 0
-
+        length = len(tokens)
         for result in self.parser.parse(tokens, start_position, identifier, backward):
-            context = Context()
+            if result and result.at_position == 0 and result.to_position == length:
+                yield result
 
+    def _make_contexts(self, results):
+        for result in results:
+            context = Context()
             try:
                 result.build(context)
-            except BuildResultError as e:
-                raise e
+                yield context
+            except BuildResultError:
+                pass
 
+    def results(self, text: str, identifier: str = Identified.ALL, index: int = 0, backward=False):
+        tokens = self._make_tokens(text, index)
+        results = self._make_results(tokens, identifier, backward)
+        return results
+
+    def read(self, text: str, identifier: str = Identified.ALL, index: int = 0, backward=False):
+        tokens = self._make_tokens(text, index)
+        results = self._make_results(tokens, identifier, backward)
+        contexts = self._make_contexts(results)
+        for context in contexts:
             ast = context.pile[-1]
 
             if ast:
