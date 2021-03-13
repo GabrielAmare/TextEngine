@@ -116,7 +116,7 @@ lexer, parser, builder, engine = base(
     # BLOCS
     [BlocP, match("LP") & match("L0").in_("*") & match("RP")],
     [Attr, match("Id").in_("*") & match("EQUAL") & match("L0").in_("*")],
-    [Call, match("Id").in_("*") & match("LP") & match("L0").in_("*").sep_by("COMA", backward=True) & match("RP")],
+    [Call, match("Id").in_("*") & match("LP") & match("L0").in_("*").sep_by("COMMA", backward=True) & match("RP")],
     # OPERATORS
     [
         Pow,
@@ -133,32 +133,21 @@ lexer, parser, builder, engine = base(
     [Sub, match("L0").in_("*") & match("MINUS") & match("L1").in_("*")],
     # UNITS
     [Id, match("ID").in_("*")],
-    [Integer, match("INTEGER").in_("*")],
-    [Decimal, match("DECIMAL").in_("*")],
-    [Equations, match("LB").in_("*").sep_by("NEWLINE", backward=True)]
+    [Integer, match("INT").in_("*")],
+    [Decimal, match("FLOAT").in_("*")],
+    [Equations, match("L-1").in_("*").sep_by("NEWLINE", backward=True)],
+    pattern_libs=["maths", "blocs", "units"]
 
 )
 
-lexer.add_pattern("PLUS", mode="str", expr="+")
-lexer.add_pattern("MINUS", mode="str", expr="-")
-lexer.add_pattern("STAR", mode="str", expr="*")
-lexer.add_pattern("SLASH", mode="str", expr="/")
-lexer.add_pattern("HAT", mode="str", expr="^")
-lexer.add_pattern("EQUAL", mode="str", expr="=")
 lexer.add_pattern("NEWLINE", mode="str", expr="\n")
-lexer.add_pattern("COMA", mode="str", expr=",")
-
-lexer.add_pattern("LP", mode="str", expr="(")
-lexer.add_pattern("RP", mode="str", expr=")")
+lexer.add_pattern("COMMA", mode="str", expr=",")
 
 lexer.add_pattern("SQR.POWER", mode="str", expr="²", value=Integer(2))
 lexer.add_pattern("CUBE.POWER", mode="str", expr="³", value=Integer(3))
 
-lexer.add_pattern("ID", mode="re", expr=r"[a-zA-Z_][a-zA-Z0-9_]*")
-lexer.add_pattern("DECIMAL", mode="re", expr=r"[0-9]+\.[0-9]*|\.[0-9]+", value=float)
-lexer.add_pattern("INTEGER", mode="re", expr=r"[0-9]+", value=int)
 
-parser.add_routine("LB", match("Attr") | match("L0"))
+parser.add_routine("L-1", match("Attr") | match("L0"))
 parser.add_routine("L0", match("Add") | match("Sub") | match("L1"))
 parser.add_routine("L1", match("Mul") | match("Div") | match("L2"))
 parser.add_routine("L2", match("Pow") | match("L3"))
