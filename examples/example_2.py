@@ -140,8 +140,8 @@ lexer, parser, builder, engine = base(
 
 )
 
-lexer.add_pattern("NEWLINE", mode="str", expr="\n")
-lexer.add_pattern("COMMA", mode="str", expr=",")
+lexer.add_pattern("NEWLINE.SYMBOL", mode="str", expr="\n")
+lexer.add_pattern("COMMA.SYMBOL", mode="str", expr=",")
 
 lexer.add_pattern("SQR.POWER", mode="str", expr="²", value=Integer(2))
 lexer.add_pattern("CUBE.POWER", mode="str", expr="³", value=Integer(3))
@@ -166,6 +166,20 @@ f(x, x, x) * f(y, y, y) ^ f(z, z, z)"""
     print()
     print(result)
     print(repr(result))
+
+    chart = {
+        "*": dict(bg="black", fg="white", bd=2, relief="sunken", font=("Consolas", 12, "bold"), padx=5, pady=5),
+        "ID": dict(fg="red"),
+        "INT": dict(fg="blue"),
+        "FLOAT": dict(fg="blue"),
+        "*.SYMBOL": dict(fg="orange"),
+        "*.POWER": dict(fg="purple"),
+    }
+    text = "f(x, x, x) * f(y, y, y) ^ f(z, z, z)"
+
+    app = tkEngine(engine, text, chart, backward=True)
+
+    app.mainloop()
 
     text = True
     while text:
