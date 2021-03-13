@@ -14,11 +14,9 @@ class Parser:
                 yield builder
 
     def parse(self, tokens: list, position: int, identifier: str = Identified.ALL, backward: bool = False):
-        length = len(tokens)
         for builder in self.get_all_matching_builders(identifier):
             result = builder.parse(tokens, position, self, backward)
-            if result and result.at_position == 0 and result.to_position == length:
-                yield result
+            yield result
 
     def add_builder(self, identifier, rule):
         raise NotImplementedError
