@@ -51,7 +51,7 @@ def match(obj: Union[Match, Pattern, str]):
             return As(key, Match(identifier))
         elif " in " in obj:
             identifier, key = obj.split(" in ")
-            return As(key, Match(identifier))
+            return In(key, Match(identifier))
         else:
             return Match(obj)
     else:
