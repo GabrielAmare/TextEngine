@@ -46,7 +46,14 @@ def match(obj: Union[Match, Pattern, str]):
     elif isinstance(obj, Pattern):
         return Match(obj.identifier)
     elif isinstance(obj, str):
-        return Match(obj)
+        if " as " in obj:
+            identifier, key = obj.split(" as ")
+            return As(key, Match(identifier))
+        elif " in " in obj:
+            identifier, key = obj.split(" in ")
+            return As(key, Match(identifier))
+        else:
+            return Match(obj)
     else:
         raise TypeError(obj)
 
