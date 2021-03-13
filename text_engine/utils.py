@@ -18,12 +18,12 @@ PATTERN_LIBS = {
         dict(identifier="STR", mode="re", expr=r'".*?"', flag=16, priority=UNITS),
     ],
     "maths": [
-        dict(identifier="PLUS", mode="str", expr="+", priority=SYMBOLS),
-        dict(identifier="MINUS", mode="str", expr="-", priority=SYMBOLS),
-        dict(identifier="STAR", mode="str", expr="*", priority=SYMBOLS),
-        dict(identifier="SLASH", mode="str", expr="/", priority=SYMBOLS),
-        dict(identifier="HAT", mode="str", expr="^", priority=SYMBOLS),
-        dict(identifier="EQUAL", mode="str", expr="=", priority=SYMBOLS),
+        dict(identifier="PLUS.SYMBOL", mode="str", expr="+", priority=SYMBOLS),
+        dict(identifier="MINUS.SYMBOL", mode="str", expr="-", priority=SYMBOLS),
+        dict(identifier="STAR.SYMBOL", mode="str", expr="*", priority=SYMBOLS),
+        dict(identifier="SLASH.SYMBOL", mode="str", expr="/", priority=SYMBOLS),
+        dict(identifier="HAT.SYMBOL", mode="str", expr="^", priority=SYMBOLS),
+        dict(identifier="EQUAL.SYMBOL", mode="str", expr="=", priority=SYMBOLS),
     ],
     "blocs": [
         dict(identifier="LV", mode="str", expr="<", priority=SYMBOLS),
