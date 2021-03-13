@@ -65,6 +65,10 @@ class Engine:
         results = self._make_results(tokens, identifier, backward)
         return results
 
+    def result(self, text: str, identifier: str = Identified.ALL, index: int = 0, backward=False):
+        for result in self.results(text, identifier, index, backward):
+            return result
+
     def read(self, text: str, identifier: str = Identified.ALL, index: int = 0, backward=False):
         tokens = self._make_tokens(text, index)
         results = self._make_results(tokens, identifier, backward)
