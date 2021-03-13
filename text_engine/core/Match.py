@@ -46,7 +46,7 @@ class Match(Rule, Identified):
 
 class MatchResult(Result):
     def __init__(self, rule: Rule, token: Token):
-        super().__init__(rule, token.at_position, token.to_position)
+        super().__init__(rule, token.at_position, token.to_position, layer=1)
         self.token = token
 
     def __str__(self):
