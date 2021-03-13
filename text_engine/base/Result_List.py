@@ -24,6 +24,7 @@ class Result_List(Result):
             assert self.to_position == result.at_position
             self.results.append(result)
             self.to_position = result.to_position
+        self.layer = max(self.layer, result.layer + 1)
 
     def build(self, context: Context):
         for result in self.results:

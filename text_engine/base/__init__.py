@@ -1,6 +1,7 @@
 from .Identified import Identified
 from .PositionedItem import PositionedItem
 from .IndexedItem import IndexedItem
+from .LayeredItem import LayeredItem
 
 from .Context import Context
 

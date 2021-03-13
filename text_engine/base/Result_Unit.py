@@ -7,7 +7,7 @@ class Result_Unit(Result):
     result: Result
 
     def __init__(self, rule: Rule, result: Result):
-        Result.__init__(self, rule, result.at_position, result.to_position)
+        Result.__init__(self, rule, result.at_position, result.to_position, result.layer + 1)
         self.result = result
 
     def __str_body__(self):
