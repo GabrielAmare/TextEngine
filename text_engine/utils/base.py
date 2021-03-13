@@ -1,4 +1,4 @@
-from .core import *
+from ..core import *
 
 BASE = 0
 SYMBOLS = 100
