@@ -5,7 +5,9 @@ from .Context import Context
 
 class Result_Error(Result):
     def __init__(self, rule: Rule, at_position: int, reason="", result=None):
-        super().__init__(rule, at_position, at_position, result.layer + 1 if result else 0)
+        to_position = at_position if result is None else result.to_position
+        layer = 0 if result is None else result.layer + 1
+        super().__init__(rule, at_position, to_position, layer)
         self.reason = reason
         self.result = result
 
