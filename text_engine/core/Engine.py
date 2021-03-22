@@ -44,11 +44,11 @@ class Engine:
 
         return tokens
 
-    def _make_results(self, tokens, identifier: str = Identified.ALL, backward=False):
+    def _make_results(self, tokens, identifier: str = Identified.ALL, backward=False, full=True):
         start_position = len(tokens) if backward else 0
         length = len(tokens)
         for result in self.parser.parse(tokens, start_position, identifier, backward):
-            if result and result.at_position == 0 and result.to_position == length:
+            if result and (result.at_position == 0 and result.to_position == length or not full):
                 yield result
 
     def _make_contexts(self, results):
@@ -60,9 +60,9 @@ class Engine:
             except BuildResultError:
                 pass
 
-    def results(self, text: str, identifier: str = Identified.ALL, index: int = 0, backward=False):
+    def results(self, text: str, identifier: str = Identified.ALL, index: int = 0, backward=False, full=True):
         tokens = self._make_tokens(text, index)
-        results = self._make_results(tokens, identifier, backward)
+        results = self._make_results(tokens, identifier, backward, full)
         return results
 
     def result(self, text: str, identifier: str = Identified.ALL, index: int = 0, backward=False):

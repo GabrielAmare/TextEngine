@@ -11,10 +11,11 @@ class Display_BuilderResult(Frame):
     def __init__(self, root, result: BuilderResult, options=None, **config):
         super().__init__(root, bg="black", **config)
         self.head = Label(self, text=result.rule.name, **self.CFG, anchor=S)
-        self.body = DisplayResult(self, result.result, options=options)
-
-        self.body.pack(side=BOTTOM, fill=X)
         self.head.pack(side=TOP, fill=BOTH, expand=True)
+
+        self.body = DisplayResult(self, result.result, options=options)
+        if self.body:
+            self.body.pack(side=BOTTOM, fill=X)
 
 
 class Display_AsResult(Frame):
@@ -23,11 +24,12 @@ class Display_AsResult(Frame):
     def __init__(self, root, result: AsResult, options=None, **config):
         super().__init__(root, bg="black", **config)
 
-        self.head = Label(self, text="↑ " + result.rule.key, **self.CFG)
         self.body = DisplayResult(self, result.result, options=options)
-
         self.body.pack(side=BOTTOM, fill=X)
-        self.head.pack(side=BOTTOM, fill=X)
+
+        if not options.get("no_keys"):
+            self.head = Label(self, text="↑ " + result.rule.key, **self.CFG)
+            self.head.pack(side=BOTTOM, fill=X)
 
 
 class Display_InResult(Frame):
@@ -36,11 +38,12 @@ class Display_InResult(Frame):
     def __init__(self, root, result: InResult, options=None, **config):
         super().__init__(root, bg="black", **config)
 
-        self.head = Label(self, text="↑ " + result.rule.key + "[]", **self.CFG)
         self.body = DisplayResult(self, result.result, options=options)
-
         self.body.pack(side=BOTTOM, fill=X)
-        self.head.pack(side=BOTTOM, fill=X)
+
+        if not options.get("no_keys"):
+            self.head = Label(self, text="↑ " + result.rule.key + "[]", **self.CFG)
+            self.head.pack(side=BOTTOM, fill=X)
 
 
 class Display_MatchResult(Frame):
@@ -81,6 +84,7 @@ class Display_ResultsRow(Frame):
             if options.get("no_unused_matches"):
                 if isinstance(widget, Display_MatchResult):
                     continue
+
             if widget:
                 print(type(widget))
                 widget.pack(side=LEFT, fill=BOTH, expand=True)
@@ -91,9 +95,9 @@ class Display_ResultsRow(Frame):
 def DisplayResult(root, result, options=None, **config):
     if isinstance(result, BuilderResult):
         return Display_BuilderResult(root, result, options=options, **config)
-    elif isinstance(result, AsResult) and not options.get("no_keys"):
+    elif isinstance(result, AsResult):
         return Display_AsResult(root, result, options=options, **config)
-    elif isinstance(result, InResult) and not options.get("no_keys"):
+    elif isinstance(result, InResult):
         return Display_InResult(root, result, options=options, **config)
     elif isinstance(result, MatchResult):
         return Display_MatchResult(root, result, options=options, **config)
@@ -110,6 +114,12 @@ def DisplayResult(root, result, options=None, **config):
 
 
 def display(*results, **options):
+    """
+
+    :param results:
+    :param options: 'no_keys', 'no_unused_matches'
+    :return:
+    """
     tk = Tk()
     tk.configure(bg="black")
     ysf = YScrollFrame(tk, bg="black")

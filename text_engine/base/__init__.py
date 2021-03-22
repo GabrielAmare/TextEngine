@@ -1,5 +1,9 @@
 from .Identified import Identified
+
 from .PositionedItem import PositionedItem
+from .PositionedPart import PositionedPart
+from .PositionedHolder import PositionedHolder
+
 from .IndexedItem import IndexedItem
 from .LayeredItem import LayeredItem
 

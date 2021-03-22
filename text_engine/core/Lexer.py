@@ -12,6 +12,11 @@ class Lexer:
     def __init__(self, *patterns: Pattern):
         self.patterns = list(patterns)
 
+    def get_all_matching_patterns(self, identifier: str):
+        for pattern in self.patterns:
+            if pattern <= identifier:
+                yield pattern
+
     def i_tokenize(self, text: str, index=0, position=0):
         length = len(text) - index
         while index < length:

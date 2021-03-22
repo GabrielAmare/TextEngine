@@ -17,7 +17,7 @@ pckg_dir = os.path.abspath(os.curdir)
 
 setuptools.setup(
     name="TextEngine",
-    version="1.0.2",
+    version="1.0.3",
     author="Gabriel Amare",
     author_email="gabriel.amare.31@gmail.com",
     description="Easy implementation of lexical & syntax analysis for formal language analysis",
@@ -25,7 +25,14 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     install_requires=requirements,
     url="https://github.com/GabrielAmare/TextEngine",
-    packages=['text_engine', 'text_engine.base', 'text_engine.core'],
+    packages=[
+        'text_engine',
+        'text_engine.base',
+        'text_engine.core',
+        'text_engine.utils',
+        'text_engine.utils.operators',
+        'text_engine.utils.optimize'
+    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
