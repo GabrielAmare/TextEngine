@@ -1,5 +1,4 @@
-from dataclasses import dataclass, field
-from item_engine import Element, ACTION, STATE
+from item_engine import Element, ACTION, STATE, INDEX, T_STATE, INCLUDE, EXCLUDE
 
 __all__ = ["Char", "Token", "Lemma"]
 
@@ -9,39 +8,55 @@ class HashableDict(dict):
         return hash((type(self), tuple(sorted(self.items(), key=lambda item: item[0]))))
 
 
-@dataclass(frozen=True, order=True)
-class Char(Element):
-    char: str
+class BaseElement(Element):
+    @classmethod
+    def EOF(cls, start: INDEX):
+        return cls(
+            start=start,
+            end=start,
+            value=T_STATE("EOF")
+        )
+
+    def develop(self, action: ACTION, value: STATE, item: Element) -> Element:
+        raise NotImplementedError
+
+
+class Char(BaseElement):
+    def __hash__(self) -> int:
+        return hash((type(self), self.start, self.end, self.value))
 
     @classmethod
-    def make(cls, index: int, char: str):
+    def make(cls, index: INDEX, char: str):
         return Char(
-            value="CHAR",
+            value=T_STATE(char),
             start=index,
-            end=index + 1,
-            char=char
+            end=index + 1
         )
 
     def develop(self, action: ACTION, value: STATE, item):
         raise Exception
 
 
-@dataclass(frozen=True, order=True)
-class Token(Element):
-    content: str = ""
+class Token(BaseElement):
+    def __init__(self, start: INDEX, end: INDEX, value: STATE, content: str = ""):
+        super().__init__(start, end, value)
+        self.content: str = content
+
+    def __hash__(self) -> int:
+        return hash((type(self), self.start, self.end, self.value, self.content))
 
     def __str__(self):
         return repr(self.content)
 
     def develop(self, action: ACTION, value: STATE, item: Char):
-        if action == "include":
+        if action == INCLUDE:
             return self.__class__(
                 start=self.start,
                 end=item.end,
                 value=value,
-                content=self.content + item.char
+                content=self.content + str(item.value)
             )
-        elif action == "ignore":
+        elif action == EXCLUDE:
             return self.__class__(
                 start=self.start,
                 end=self.end,
@@ -52,20 +67,26 @@ class Token(Element):
             raise ValueError(action)
 
 
-@dataclass(frozen=True, order=True)
-class Lemma(Element):
-    data: HashableDict = field(default_factory=HashableDict)
+class Lemma(BaseElement):
+    def __init__(self, start: INDEX, end: INDEX, value: STATE, data=None):
+        super().__init__(start, end, value)
+        if data is None:
+            data = {}
+        self.data: HashableDict = HashableDict(**data)
+
+    def __hash__(self) -> int:
+        return hash((type(self), self.start, self.end, self.value, self.data))
 
     def develop(self, action: ACTION, value: STATE, item: Token):
         data = HashableDict(self.data)
-        if action == "include":
+        if action == INCLUDE:
             return self.__class__(
                 start=self.start,
                 end=item.end,
                 value=value,
                 data=data
             )
-        elif action == "ignore":
+        elif action == EXCLUDE:
             return self.__class__(
                 start=self.start,
                 end=self.end,

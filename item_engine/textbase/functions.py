@@ -24,10 +24,8 @@ def non_match(cs: CharG) -> Match:
 
 
 def make_characters(text: str) -> Iterator[Char]:
-    index = -1
     for index, char in enumerate(text):
         yield Char.make(index, char)
-    yield Char.make(index + 1, "EOF")
 
 
 def make_branch_set(*branches: Branch) -> BranchSet:

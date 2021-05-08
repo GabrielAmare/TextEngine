@@ -1,8 +1,10 @@
-from dataclasses import dataclass
+from __future__ import annotations
 from typing import Tuple, Iterator, FrozenSet
 
-from .items import Item, ALWAYS
-from .rules import Rule, Valid, Error, Match, IGNORE
+from .constants import T_STATE
+from .items import Item, Group
+from .rules import Rule, Valid, Error, Match, EXCLUDE
+from .generic_items import Item as __Item__, ItemSet as __ItemSet__
 
 __all__ = ("Branch", "BranchSet")
 
@@ -11,22 +13,25 @@ __all__ = ("Branch", "BranchSet")
 # Branch
 ########################################################################################################################
 
-@dataclass(frozen=True, order=True)
-class Branch:
-    name: str
-    rule: Rule
-    priority: int = 0
-    transfer: bool = False
+class Branch(__Item__):
+    @property
+    def as_group(self) -> BranchSet:
+        return BranchSet(frozenset({self}))
 
-    def __or__(self, other):
-        if isinstance(other, Branch):
-            return self.__class__(frozenset({self, other}))
-        elif isinstance(other, BranchSet):
-            return self.__class__(frozenset({self, *other.branches}))
-        else:
-            raise TypeError(type(other))
+    def __init__(self, name: str, rule: Rule, priority: int = 0, transfer: bool = False):
+        self.name: str = name
+        self.rule: Rule = rule
+        self.priority: int = priority
+        self.transfer: bool = transfer
 
-    __ior__ = __or__
+    def __eq__(self, other: Branch):
+        return self.name == other.name and \
+               self.rule == other.rule and \
+               self.priority == other.priority and \
+               self.transfer == other.transfer
+
+    def __hash__(self):
+        return hash((type(self), self.name, self.rule, self.priority, self.transfer))
 
     def new_rule(self, rule: Rule):
         return Branch(
@@ -42,7 +47,7 @@ class Branch:
             yield first, after
 
         if self.rule.skipable:
-            yield Match(group=ALWAYS, action=IGNORE), Valid()
+            yield Match(group=Group.always(), action=EXCLUDE), Valid()
 
     @property
     def alphabet(self):
@@ -61,32 +66,24 @@ class Branch:
         return isinstance(self.rule, Error)
 
 
-@dataclass(frozen=True, order=True)
-class BranchSet:
-    branches: FrozenSet[Branch]
-
-    def __or__(self, other):
-        if isinstance(other, Branch):
-            return self.__class__(frozenset({*self.branches, other}))
-        elif isinstance(other, BranchSet):
-            return self.__class__(frozenset({*self.branches, *other.branches}))
-        else:
-            raise TypeError(type(other))
-
-    __ior__ = __or__
+class BranchSet(__ItemSet__[Branch]):
+    @property
+    def branches(self):
+        """deprecated"""
+        return self.items
 
     @property
     def alphabet(self) -> FrozenSet[Item]:
-        return frozenset({item for branch in self.branches for item in branch.alphabet})
+        return frozenset({item for branch in self.items for item in branch.alphabet})
 
     @property
     def terminal(self) -> bool:
         return all(branch.terminal for branch in self.branches)
 
-    def terminal_code(self, throw_errors: bool = False) -> Iterator[str]:
+    def terminal_code(self, throw_errors: bool = False) -> Iterator[T_STATE]:
         valid_branches = [branch for branch in self.branches if branch.is_valid]
         valid_max_priority = max([branch.priority for branch in valid_branches], default=0)
-        valid_names = [branch.name for branch in valid_branches if branch.priority == valid_max_priority]
+        valid_names = [T_STATE(branch.name) for branch in valid_branches if branch.priority == valid_max_priority]
 
         if valid_names:
             return valid_names
@@ -100,6 +97,6 @@ class BranchSet:
                 return []
             else:
                 if error_names:
-                    return ["!" + "|".join(error_names)]
+                    return [T_STATE("!" + "|".join(error_names))]
                 else:
-                    return ["!"]
+                    return [T_STATE("!")]

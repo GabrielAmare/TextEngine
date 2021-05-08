@@ -1,16 +1,15 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from typing import Tuple, Iterator, FrozenSet
 from functools import reduce
 from operator import and_
 
-from .items import Item, Group, ALWAYS, NEVER
-
+from .items import Item, Group
+from .constants import EXCLUDE
 INF = -1
 
-IGNORE = "ignore"
-
 __all__ = (
-    "IGNORE", "INF",
+    "INF",
     "Rule",
     "Empty", "RuleUnit", "RuleList",
     "Optional", "Repeat", "All", "Any",
@@ -82,7 +81,7 @@ class Rule:
         raise NotImplementedError
 
     @property
-    def splited(self) -> Iterator[Tuple["Match", "Rule"]]:
+    def splited(self) -> Iterator[Tuple[Match, Rule]]:
         raise NotImplementedError
 
 
@@ -105,7 +104,7 @@ class Empty(Rule):
         return False
 
     @property
-    def splited(self) -> Iterator[Tuple["Match", Rule]]:
+    def splited(self) -> Iterator[Tuple[Match, Rule]]:
         raise NotImplementedError
 
 
@@ -126,7 +125,7 @@ class RuleUnit(Rule):
         raise NotImplementedError
 
     @property
-    def splited(self) -> Iterator[Tuple["Match", Rule]]:
+    def splited(self) -> Iterator[Tuple[Match, Rule]]:
         raise NotImplementedError
 
 
@@ -153,7 +152,7 @@ class RuleList(Rule):
         raise NotImplementedError
 
     @property
-    def splited(self) -> Iterator[Tuple["Match", Rule]]:
+    def splited(self) -> Iterator[Tuple[Match, Rule]]:
         raise NotImplementedError
 
 
@@ -172,7 +171,7 @@ class Optional(RuleUnit):
         return True
 
     @property
-    def splited(self) -> Iterator[Tuple["Match", Rule]]:
+    def splited(self) -> Iterator[Tuple[Match, Rule]]:
         for first, after in self.rule.splited:
             yield first, after
 
@@ -188,7 +187,7 @@ class Repeat(RuleUnit):
         return True
 
     @property
-    def splited(self) -> Iterator[Tuple["Match", Rule]]:
+    def splited(self) -> Iterator[Tuple[Match, Rule]]:
         for first, after in self.rule.splited:
             yield first, after & self
 
@@ -207,7 +206,7 @@ class All(RuleList):
                 break
 
     @property
-    def splited(self) -> Iterator[Tuple["Match", Rule]]:
+    def splited(self) -> Iterator[Tuple[Match, Rule]]:
         for rule_first, rule_after in self.decomposed:
             for first, after in rule_first.splited:
                 yield first, after & rule_after
@@ -224,7 +223,7 @@ class All(RuleList):
 @dataclass(frozen=True, order=True)
 class Any(RuleList):
     @property
-    def splited(self) -> Iterator[Tuple["Match", Rule]]:
+    def splited(self) -> Iterator[Tuple[Match, Rule]]:
         for rule in self.rules:
             for first, after in rule.splited:
                 yield first, after
@@ -246,15 +245,15 @@ class Any(RuleList):
 @dataclass(frozen=True, order=True)
 class Valid(Empty):
     @property
-    def splited(self) -> Iterator[Tuple["Match", Rule]]:
-        yield Match(group=ALWAYS, action=IGNORE), Valid()
+    def splited(self) -> Iterator[Tuple[Match, Rule]]:
+        yield Match(group=Group.always(), action=EXCLUDE), Valid()
 
 
 @dataclass(frozen=True, order=True)
 class Error(Empty):
     @property
-    def splited(self) -> Iterator[Tuple["Match", Rule]]:
-        yield Match(group=NEVER, action=IGNORE), Error()
+    def splited(self) -> Iterator[Tuple[Match, Rule]]:
+        yield Match(group=Group.never(), action=EXCLUDE), Error()
 
 
 ########################################################################################################################
@@ -270,9 +269,9 @@ class Match(Rule):
     action: str = ""
 
     @property
-    def splited(self) -> Iterator[Tuple["Match", Rule]]:
+    def splited(self) -> Iterator[Tuple[Match, Rule]]:
         yield self, Valid()
-        yield Match(~self.group, IGNORE), Error()
+        yield Match(~self.group, EXCLUDE), Error()
 
     @property
     def alphabet(self) -> FrozenSet[Item]:

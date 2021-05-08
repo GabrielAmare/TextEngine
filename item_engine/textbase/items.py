@@ -1,29 +1,32 @@
+from __future__ import annotations
 from dataclasses import dataclass
+from typing import Union, List
+
 from item_engine import Item, Group, Match
 import python_generator as pg
 
 __all__ = ["CharI", "CharG", "TokenI", "TokenG"]
 
 
-@dataclass(frozen=True, order=True)
 class CharG(Group):
+    @property
+    def items_str(self) -> str:
+        return repr(''.join(sorted(repr(str(item))[1:-1] for item in self.items)))
+
     @property
     def condition(self) -> pg.CONDITION:
         expr = ''.join(sorted(map(str, self.items)))
-        return self.code_factory("item.char", repr(expr))
+        return self.code_factory("item.value", repr(expr))
 
     def match(self, action: str) -> Match:
         return Match(self, action)
 
-    def inc(self):
-        return self.match("include")
 
-    def exc(self):
-        return self.match("ignore")
-
-
-@dataclass(frozen=True, order=True)
 class TokenG(Group):
+    @property
+    def items_str(self) -> str:
+        return '\n'.join(map(repr, sorted([item.name for item in self.items])))
+
     @property
     def condition(self) -> pg.CONDITION:
         items = sorted(map(str, self.items))
@@ -33,17 +36,11 @@ class TokenG(Group):
     def match(self, action: str) -> Match:
         return Match(self, action)
 
-    def inc(self):
-        return self.match("include")
-
-    def exc(self):
-        return self.match("ignore")
-
-    def as_(self, key):
-        return self.match(f"as:{key!s}")
-
-    def in_(self, key):
-        return self.match(f"in:{key!s}")
+    @classmethod
+    def grp(cls, names: Union[str, List[str]]) -> TokenG:
+        if isinstance(names, str):
+            names = [names]
+        return cls(frozenset(map(TokenI, names)))
 
 
 @dataclass(frozen=True, order=True)
@@ -54,17 +51,8 @@ class CharI(Item):
         return self.char
 
     @property
-    def as_group(self):
+    def as_group(self) -> CharG:
         return CharG(frozenset({self}))
-
-    def match(self, action: str) -> Match:
-        return self.as_group.match(action)
-
-    def inc(self):
-        return self.match("include")
-
-    def exc(self):
-        return self.match("ignore")
 
 
 @dataclass(frozen=True, order=True)
@@ -75,20 +63,5 @@ class TokenI(Item):
         return repr(self.name)
 
     @property
-    def as_group(self):
+    def as_group(self) -> TokenG:
         return TokenG(frozenset({self}))
-
-    def match(self, action: str) -> Match:
-        return self.as_group.match(action)
-
-    def inc(self):
-        return self.match("include")
-
-    def exc(self):
-        return self.match("ignore")
-
-    def as_(self, key):
-        return self.match(f"as:{key!s}")
-
-    def in_(self, key):
-        return self.match(f"in:{key!s}")
