@@ -68,27 +68,22 @@ class Branch(__Item__):
 
 class BranchSet(__ItemSet__[Branch]):
     @property
-    def branches(self):
-        """deprecated"""
-        return self.items
-
-    @property
     def alphabet(self) -> FrozenSet[Item]:
         return frozenset({item for branch in self.items for item in branch.alphabet})
 
     @property
     def terminal(self) -> bool:
-        return all(branch.terminal for branch in self.branches)
+        return all(branch.terminal for branch in self.items)
 
     def terminal_code(self, throw_errors: bool = False) -> Iterator[T_STATE]:
-        valid_branches = [branch for branch in self.branches if branch.is_valid]
+        valid_branches = [branch for branch in self.items if branch.is_valid]
         valid_max_priority = max([branch.priority for branch in valid_branches], default=0)
         valid_names = [T_STATE(branch.name) for branch in valid_branches if branch.priority == valid_max_priority]
 
         if valid_names:
             return valid_names
 
-        error_branches = [branch for branch in self.branches if branch.is_error]
+        error_branches = [branch for branch in self.items if branch.is_error]
         error_max_priority = max([branch.priority for branch in error_branches], default=0)
         error_names = [branch.name for branch in error_branches if branch.priority == error_max_priority]
 

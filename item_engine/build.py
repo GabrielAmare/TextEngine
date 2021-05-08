@@ -55,7 +55,7 @@ class ActionToBranchSet:
                 yield L0(action=action, value=get_bs_code(branch_set))
 
     def ast(self, get_bs_code: Callable[[BranchSet], STATE]) -> L1:
-        throw_errors = not all(branch.is_error for branch_set in self.data.values() for branch in branch_set.branches)
+        throw_errors = not all(branch.is_error for branch_set in self.data.values() for branch in branch_set.items)
 
         return L1(cases=list(self._ast(get_bs_code, throw_errors)))
 
@@ -125,7 +125,7 @@ class Flattened:
         self.branches: List[Branch] = []
         self.data: List[Tuple[str, Group, Branch]] = []
 
-        for branch in branch_set.branches:
+        for branch in branch_set.items:
             for first, after in branch.splited:
                 self.actions.append(first.action)
                 self.groups.append(first.group)
