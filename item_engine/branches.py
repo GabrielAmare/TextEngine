@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass
 from typing import Tuple, Iterator, FrozenSet
 
 from .constants import T_STATE, EXCLUDE
@@ -13,25 +14,16 @@ __all__ = ("Branch", "BranchSet")
 # Branch
 ########################################################################################################################
 
+@dataclass(frozen=True, order=True)
 class Branch(__Item__):
+    name: str
+    rule: Rule
+    priority: int = 0
+    transfer: bool = False
+
     @property
     def as_group(self) -> BranchSet:
         return BranchSet(frozenset({self}))
-
-    def __init__(self, name: str, rule: Rule, priority: int = 0, transfer: bool = False):
-        self.name: str = name
-        self.rule: Rule = rule
-        self.priority: int = priority
-        self.transfer: bool = transfer
-
-    def __eq__(self, other: Branch):
-        return self.name == other.name and \
-               self.rule == other.rule and \
-               self.priority == other.priority and \
-               self.transfer == other.transfer
-
-    def __hash__(self):
-        return hash((type(self), self.name, self.rule, self.priority, self.transfer))
 
     def new_rule(self, rule: Rule):
         return Branch(

@@ -4,16 +4,14 @@ from typing import FrozenSet, Type, TypeVar, Generic
 
 import python_generator as pg
 
-__all__ = ("Item", "AnyOther", "Group")
+__all__ = ["Item", "AnyOther", "Group"]
 
 from .generic_items import Item as __Item__, ItemSet as __ItemSet__
 from .constants import INCLUDE, EXCLUDE, AS, IN
 
 
+@dataclass(frozen=True, order=True)
 class Item(__Item__):
-    def __hash__(self):
-        raise NotImplementedError
-
     @property
     def as_group(self) -> Group:
         raise NotImplementedError

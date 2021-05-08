@@ -1,13 +1,12 @@
 from __future__ import annotations
+from dataclasses import dataclass
 from typing import TypeVar, Generic, FrozenSet, Iterable, Type
 
 __all__ = ["Item", "ItemSet"]
 
 
+@dataclass(frozen=True, order=True)
 class Item:
-    def __hash__(self):
-        raise NotImplementedError
-
     @property
     def as_group(self) -> ItemSet:
         raise NotImplementedError
