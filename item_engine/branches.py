@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import Tuple, Iterator, FrozenSet
 
-from .constants import T_STATE
+from .constants import T_STATE, EXCLUDE
 from .items import Item, Group
-from .rules import Rule, Valid, Error, Match, EXCLUDE
+from .rules import Rule, Valid, Error, Match
 from .generic_items import Item as __Item__, ItemSet as __ItemSet__
 
 __all__ = ("Branch", "BranchSet")
