@@ -1,21 +1,21 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Tuple, Iterator, FrozenSet
+from typing import Tuple, Iterator, FrozenSet, List
 from functools import reduce
 from operator import and_
 
 from .items import Item, Group
 from .constants import EXCLUDE
+
 INF = -1
 
-__all__ = (
+__all__ = [
     "INF",
     "Rule",
     "Empty", "RuleUnit", "RuleList",
     "Optional", "Repeat", "All", "Any",
-    "Valid", "Error",
     "Match",
-)
+]
 
 
 ########################################################################################################################
@@ -24,12 +24,12 @@ __all__ = (
 
 @dataclass(frozen=True, order=True)
 class Rule:
-    def repeat(self, mn: int = 0, mx: int = INF):
+    def repeat(self, mn: int = 0, mx: int = INF) -> Rule:
         assert mn >= 0
         assert mx == -1 or (mx >= mn and mx > 0)
 
         if mn == 0:
-            base = Valid()
+            base = Empty(valid=True)
         else:
             base = All(tuple(mn * self.all))
 
@@ -39,27 +39,35 @@ class Rule:
             return base & All(tuple((mx - mn) * self.all))
 
     @property
-    def optional(self):
+    def optional(self) -> Optional:
         return Optional(self)
 
     @property
-    def all(self):
+    def all(self) -> List[Rule]:
         return list(self.rules) if isinstance(self, All) else [self]
 
     @property
-    def any(self):
+    def any(self) -> List[Rule]:
         return list(self.rules) if isinstance(self, Any) else [self]
 
-    def __and__(self, other):
-        if isinstance(self, Error) or isinstance(other, Valid):
+    @property
+    def is_valid(self) -> bool:
+        return False
+
+    @property
+    def is_error(self) -> bool:
+        return False
+
+    def __and__(self, other: Rule) -> Rule:
+        if self.is_error or other.is_valid:
             return self
 
-        if isinstance(self, Valid) or isinstance(other, Error):
+        if self.is_valid or other.is_error:
             return other
 
         return All(tuple(self.all + other.all))
 
-    def __or__(self, other):
+    def __or__(self, other) -> Rule:
         if isinstance(self, Empty):
             return other
 
@@ -91,6 +99,16 @@ class Rule:
 
 @dataclass(frozen=True, order=True)
 class Empty(Rule):
+    valid: bool
+
+    @property
+    def is_valid(self) -> bool:
+        return self.valid
+
+    @property
+    def is_error(self) -> bool:
+        return not self.valid
+
     @property
     def alphabet(self) -> FrozenSet[Item]:
         return frozenset()
@@ -105,7 +123,10 @@ class Empty(Rule):
 
     @property
     def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        raise NotImplementedError
+        if self.valid:
+            yield Match(group=Group.always(), action=EXCLUDE), self
+        else:
+            yield Match(group=Group.never(), action=EXCLUDE), self
 
 
 @dataclass(frozen=True, order=True)
@@ -200,7 +221,7 @@ class All(RuleList):
             if index + 1 < len(self.rules):
                 yield rule, reduce(and_, self.rules[1:])
             else:
-                yield rule, Valid()
+                yield rule, Empty(valid=True)
 
             if not rule.skipable:
                 break
@@ -238,25 +259,6 @@ class Any(RuleList):
 
 
 ########################################################################################################################
-# Valid | Error
-########################################################################################################################
-
-
-@dataclass(frozen=True, order=True)
-class Valid(Empty):
-    @property
-    def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        yield Match(group=Group.always(), action=EXCLUDE), Valid()
-
-
-@dataclass(frozen=True, order=True)
-class Error(Empty):
-    @property
-    def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        yield Match(group=Group.never(), action=EXCLUDE), Error()
-
-
-########################################################################################################################
 # Match
 ########################################################################################################################
 
@@ -270,8 +272,8 @@ class Match(Rule):
 
     @property
     def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        yield self, Valid()
-        yield Match(~self.group, EXCLUDE), Error()
+        yield self, Empty(valid=True)
+        yield Match(~self.group, EXCLUDE), Empty(valid=False)
 
     @property
     def alphabet(self) -> FrozenSet[Item]:

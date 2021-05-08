@@ -4,7 +4,7 @@ from typing import Tuple, Iterator, FrozenSet
 
 from .constants import T_STATE, EXCLUDE
 from .items import Item, Group
-from .rules import Rule, Valid, Error, Match
+from .rules import Rule, Match, Empty
 from .generic_items import Item as __Item__, ItemSet as __ItemSet__
 
 __all__ = ("Branch", "BranchSet")
@@ -39,7 +39,7 @@ class Branch(__Item__):
             yield first, after
 
         if self.rule.skipable:
-            yield Match(group=Group.always(), action=EXCLUDE), Valid()
+            yield Match(group=Group.always(), action=EXCLUDE), Empty(valid=True)
 
     @property
     def alphabet(self):
@@ -51,11 +51,11 @@ class Branch(__Item__):
 
     @property
     def is_valid(self) -> bool:
-        return isinstance(self.rule, Valid)
+        return self.rule.is_valid
 
     @property
     def is_error(self) -> bool:
-        return isinstance(self.rule, Error)
+        return self.rule.is_error
 
 
 class BranchSet(__ItemSet__[Branch]):
