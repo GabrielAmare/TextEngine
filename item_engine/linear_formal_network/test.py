@@ -135,7 +135,6 @@ if __name__ == '__main__':
 
     size = 10_000
     text = ''.join(random.choice(alphabet) for _ in range(size))
-    # print(repr(text))
     t = time.time()
     try:
         tokens = net.tokenize(make_characters(text))
