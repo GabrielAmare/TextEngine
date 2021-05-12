@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Tuple, Iterator, FrozenSet
 
-from .constants import T_STATE, EXCLUDE
+from .constants import T_STATE, EXCLUDE, ACTION
 from .items import Item, Group
 from .rules import Rule, Match, Empty
 from .generic_items import GenericItem, GenericItemSet
@@ -82,3 +82,9 @@ class BranchSet(GenericItemSet[Branch]):
                     return [T_STATE("!" + "|".join(error_names))]
                 else:
                     return [T_STATE("!")]
+
+    def get_all_cases(self) -> Iterator[Tuple[Group, ACTION, Branch]]:
+        for branch in self.items:
+            for first, after in branch.splited:
+                yield first.group, first.action, branch.new_rule(after)
+
