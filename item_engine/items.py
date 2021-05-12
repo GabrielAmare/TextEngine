@@ -6,12 +6,12 @@ import python_generator as pg
 
 __all__ = ["Item", "AnyOther", "Group"]
 
-from .generic_items import Item as __Item__, ItemSet as __ItemSet__
+from .generic_items import GenericItem, GenericItemSet
 from .constants import INCLUDE, EXCLUDE, AS, IN
 
 
 @dataclass(frozen=True, order=True)
-class Item(__Item__):
+class Item(GenericItem):
     @property
     def as_group(self) -> Group:
         raise NotImplementedError
@@ -40,7 +40,7 @@ class AnyOther(Item):
 E = TypeVar("E", bound=Item)
 
 
-class Group(__ItemSet__[E], Generic[E]):
+class Group(GenericItemSet[E], Generic[E]):
     @property
     def alphabet(self) -> FrozenSet[Item]:
         return self.items

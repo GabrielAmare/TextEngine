@@ -1,0 +1,111 @@
+uid,expr,code,inf_id
+2,abaisse,VER-CON-IND-PR-1_3S_MF,1
+3,abaisses,VER-CON-IND-PR-__3SPMF,1
+4,abaissons,VER-CON-IND-PR-__3SPMF,1
+5,abaissez,VER-CON-IND-PR-__3SPMF,1
+6,abaissent,VER-CON-IND-PR-__3SPMF,1
+7,ai abaissé,VER-CON-IND-PC-__3SPMF,1
+8,as abaissé,VER-CON-IND-PC-__3SPMF,1
+9,a abaissé,VER-CON-IND-PC-__3SPMF,1
+10,avons abaissé,VER-CON-IND-PC-__3SPMF,1
+11,avez abaissé,VER-CON-IND-PC-__3SPMF,1
+12,ont abaissé,VER-CON-IND-PC-__3SPMF,1
+13,abaissais,VER-CON-IND-IM-12_S_MF,1
+14,abaissait,VER-CON-IND-IM-__3SPMF,1
+15,abaissions,VER-CON-IND-IM-__3SPMF,1
+16,abaissiez,VER-CON-IND-IM-__3SPMF,1
+17,abaissaient,VER-CON-IND-IM-__3SPMF,1
+18,avais abaissé,VER-CON-IND-PP-12_S_MF,1
+19,avait abaissé,VER-CON-IND-PP-__3SPMF,1
+20,avions abaissé,VER-CON-IND-PP-__3SPMF,1
+21,aviez abaissé,VER-CON-IND-PP-__3SPMF,1
+22,avaient abaissé,VER-CON-IND-PP-__3SPMF,1
+23,abaissai,VER-CON-IND-PS-__3SPMF,1
+24,abaissas,VER-CON-IND-PS-__3SPMF,1
+25,abaissa,VER-CON-IND-PS-__3SPMF,1
+26,abaissâmes,VER-CON-IND-PS-__3SPMF,1
+27,abaissâtes,VER-CON-IND-PS-__3SPMF,1
+28,abaissèrent,VER-CON-IND-PS-__3SPMF,1
+29,eus abaissé,VER-CON-IND-PN-12_S_MF,1
+30,eut abaissé,VER-CON-IND-PN-__3SPMF,1
+31,eûmes abaissé,VER-CON-IND-PN-__3SPMF,1
+32,eûtes abaissé,VER-CON-IND-PN-__3SPMF,1
+33,eurent abaissé,VER-CON-IND-PN-__3SPMF,1
+34,abaisserai,VER-CON-IND-FS-__3SPMF,1
+35,abaisseras,VER-CON-IND-FS-__3SPMF,1
+36,abaissera,VER-CON-IND-FS-__3SPMF,1
+37,abaisserons,VER-CON-IND-FS-__3SPMF,1
+38,abaisserez,VER-CON-IND-FS-__3SPMF,1
+39,abaisseront,VER-CON-IND-FS-__3SPMF,1
+40,aurai abaissé,VER-CON-IND-FA-__3SPMF,1
+41,auras abaissé,VER-CON-IND-FA-__3SPMF,1
+42,aura abaissé,VER-CON-IND-FA-__3SPMF,1
+43,aurons abaissé,VER-CON-IND-FA-__3SPMF,1
+44,aurez abaissé,VER-CON-IND-FA-__3SPMF,1
+45,auront abaissé,VER-CON-IND-FA-__3SPMF,1
+46,abaisse,VER-CON-SUB-PR-1_3S_MF,1
+47,abaisses,VER-CON-SUB-PR-__3SPMF,1
+48,abaissions,VER-CON-SUB-PR-__3SPMF,1
+49,abaissiez,VER-CON-SUB-PR-__3SPMF,1
+50,abaissent,VER-CON-SUB-PR-__3SPMF,1
+51,aie abaissé,VER-CON-SUB-PA-__3SPMF,1
+52,aies abaissé,VER-CON-SUB-PA-__3SPMF,1
+53,ait abaissé,VER-CON-SUB-PA-__3SPMF,1
+54,ayons abaissé,VER-CON-SUB-PA-__3SPMF,1
+55,ayez abaissé,VER-CON-SUB-PA-__3SPMF,1
+56,aient abaissé,VER-CON-SUB-PA-__3SPMF,1
+57,abaissasse,VER-CON-SUB-IM-__3SPMF,1
+58,abaissasses,VER-CON-SUB-IM-__3SPMF,1
+59,abaissât,VER-CON-SUB-IM-__3SPMF,1
+60,abaissassions,VER-CON-SUB-IM-__3SPMF,1
+61,abaissassiez,VER-CON-SUB-IM-__3SPMF,1
+62,abaissassent,VER-CON-SUB-IM-__3SPMF,1
+63,eusse abaissé,VER-CON-SUB-PP-__3SPMF,1
+64,eusses abaissé,VER-CON-SUB-PP-__3SPMF,1
+65,eût abaissé,VER-CON-SUB-PP-__3SPMF,1
+66,eussions abaissé,VER-CON-SUB-PP-__3SPMF,1
+67,eussiez abaissé,VER-CON-SUB-PP-__3SPMF,1
+68,eussent abaissé,VER-CON-SUB-PP-__3SPMF,1
+69,abaisserais,VER-CON-CON-PR-12_S_MF,1
+70,abaisserait,VER-CON-CON-PR-__3SPMF,1
+71,abaisserions,VER-CON-CON-PR-__3SPMF,1
+72,abaisseriez,VER-CON-CON-PR-__3SPMF,1
+73,abaisseraient,VER-CON-CON-PR-__3SPMF,1
+74,aurais abaissé,VER-CON-CON-P1-12_S_MF,1
+75,aurait abaissé,VER-CON-CON-P1-__3SPMF,1
+76,aurions abaissé,VER-CON-CON-P1-__3SPMF,1
+77,auriez abaissé,VER-CON-CON-P1-__3SPMF,1
+78,auraient abaissé,VER-CON-CON-P1-__3SPMF,1
+79,eusse abaissé,VER-CON-CON-P2-__3SPMF,1
+80,eusses abaissé,VER-CON-CON-P2-__3SPMF,1
+81,eût abaissé,VER-CON-CON-P2-__3SPMF,1
+82,eussions abaissé,VER-CON-CON-P2-__3SPMF,1
+83,eussiez abaissé,VER-CON-CON-P2-__3SPMF,1
+84,eussent abaissé,VER-CON-CON-P2-__3SPMF,1
+85,abaisse,VER-CON-IMP-PR-_2_S_MF,1
+86,abaissons,VER-CON-IMP-PR-1___PMF,1
+87,abaissez,VER-CON-IMP-PR-_2__PMF,1
+88,aie abaissé,VER-CON-IMP-PA-_2_S_MF,1
+89,ayons abaissé,VER-CON-IMP-PA-1___PMF,1
+90,ayez abaissé,VER-CON-IMP-PA-_2__PMF,1
+91,abaissant,VER-CON-PAR-PR-__3SPMF,1
+92,abaissé,VER-CON-PAR-PA-__3S_M_,1
+93,abaissée,VER-CON-PAR-PA-__3S__F,1
+94,abaissés,VER-CON-PAR-PA-__3_PM_,1
+95,abaissées,VER-CON-PAR-PA-__3_P_F,1
+96,ayant abaissé,VER-CON-PAR-PA-__3SPMF,1
+97,abaisser,VER-CON-INF-PR-__3SPMF,1
+98,avoir abaissé,VER-CON-INF-PA-__3SPMF,1
+99,en abaissant,VER-CON-GER-PR-__3SPMF,1
+100,en ayant abaissé,VER-CON-GER-PA-__3SPMF,1
+101,vais abaisser,VER-CON-Futur-proche-__3SPMF,1
+102,vas abaisser,VER-CON-Futur-proche-__3SPMF,1
+103,va abaisser,VER-CON-Futur-proche-__3SPMF,1
+104,allons abaisser,VER-CON-Futur-proche-__3SPMF,1
+105,allez abaisser,VER-CON-Futur-proche-__3SPMF,1
+106,vont abaisser,VER-CON-Futur-proche-__3SPMF,1
+107,viens d'abaisser,VER-CON-Passé-récent-12_S_MF,1
+108,vient d'abaisser,VER-CON-Passé-récent-__3SPMF,1
+109,venons d'abaisser,VER-CON-Passé-récent-__3SPMF,1
+110,venez d'abaisser,VER-CON-Passé-récent-__3SPMF,1
+111,viennent d'abaisser,VER-CON-Passé-récent-__3SPMF,1

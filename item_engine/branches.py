@@ -5,7 +5,7 @@ from typing import Tuple, Iterator, FrozenSet
 from .constants import T_STATE, EXCLUDE
 from .items import Item, Group
 from .rules import Rule, Match, Empty
-from .generic_items import Item as __Item__, ItemSet as __ItemSet__
+from .generic_items import GenericItem, GenericItemSet
 
 __all__ = ("Branch", "BranchSet")
 
@@ -15,7 +15,7 @@ __all__ = ("Branch", "BranchSet")
 ########################################################################################################################
 
 @dataclass(frozen=True, order=True)
-class Branch(__Item__):
+class Branch(GenericItem):
     name: str
     rule: Rule
     priority: int = 0
@@ -53,7 +53,7 @@ class Branch(__Item__):
         return self.rule.is_error
 
 
-class BranchSet(__ItemSet__[Branch]):
+class BranchSet(GenericItemSet[Branch]):
     @property
     def alphabet(self) -> FrozenSet[Item]:
         return frozenset({item for branch in self.items for item in branch.alphabet})
