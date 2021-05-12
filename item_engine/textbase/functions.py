@@ -23,9 +23,13 @@ def non_match(cs: CharG) -> Match:
     return cs.exc()
 
 
-def make_characters(text: str) -> Iterator[Char]:
+def make_characters(text: str, eof: bool = False) -> Iterator[Char]:
+    index = -1
     for index, char in enumerate(text):
         yield Char.make(index, char)
+
+    if eof:
+        yield Char.EOF(index + 1)
 
 
 def make_branch_set(*branches: Branch) -> BranchSet:

@@ -1,6 +1,9 @@
+import html
+import unicodedata
+
 from .items import Group
 from graph37 import DAG
-from .constants import NT_STATE, T_STATE, ACTION
+from .constants import NT_STATE, T_STATE, ACTION, INCLUDE, EXCLUDE
 
 __all__ = ["BuilderGraph"]
 
@@ -8,20 +11,26 @@ __all__ = ["BuilderGraph"]
 class STYLES:
     class NODES:
         class STATES:
-            NON_TERMINAL = dict(shape="box", style="filled", fillcolor="lightblue", color="black")
-            TERMINAL_VALID = dict(shape="box", style="filled", fillcolor="lime", color="black")
-            TERMINAL_ERROR = dict(shape="box", style="filled", fillcolor="red", color="black")
+            NON_TERMINAL = dict(shape="box", style="filled", fillcolor="lightgray", color="blue")
+            TERMINAL_VALID = dict(shape="box", style="filled", fillcolor="gold", color="blue")
+            TERMINAL_ERROR = dict(shape="box", style="filled", fillcolor="red", color="blue")
 
-        ACTION = dict(shape="box", style="filled", fillcolor="gray", color="black")
-        GROUP = dict(shape="box", style="filled", fillcolor="gold", color="black")
+        ACTION = dict(shape="box", style="filled", fillcolor="gray", color="blue")
+        GROUP = dict(shape="box", style="filled", fillcolor="gold", color="blue")
 
-        GROUP_ACTION = dict(shape="record", style="filled", fillcolor="gold", color="black")
+        GROUP_ACTION = dict(shape="record", style="filled", fillcolor="lightblue", color="blue")
+        GROUP_ACTION_INC = dict(shape="record", style="filled", fillcolor="lime", color="blue")
+        GROUP_ACTION_EXC = dict(shape="record", style="filled", fillcolor="orange", color="blue")
 
     class LINKS:
-        BASE = dict(constraint="true", arrowhead="vee", arrowtail="none")
+        BASE = dict(constraint="true", arrowhead="vee", arrowtail="none", color="white")
 
 
 class BuilderGraph(DAG):
+    @classmethod
+    def encode(cls, text: str):
+        return text.replace(INCLUDE, 'INC').replace(EXCLUDE, 'EXC')
+
     def non_terminal_state(self, value: NT_STATE):
         return self.node(
             type="non_terminal_state",
@@ -32,28 +41,28 @@ class BuilderGraph(DAG):
     def terminal_error_state(self, value: T_STATE):
         return self.node(
             type="terminal_error_state",
-            label='\n'.join(map(repr, sorted(value[1:].split('|')))),
+            label='\n'.join(map(repr, sorted(self.encode(value)[1:].split('|')))),
             style=STYLES.NODES.STATES.TERMINAL_ERROR
         )
 
     def terminal_valid_state(self, value: T_STATE):
         return self.node(
             type="terminal_valid_state",
-            label='\n'.join(map(repr, sorted(value.split('|')))),
+            label='\n'.join(map(repr, sorted(self.encode(value).split('|')))),
             style=STYLES.NODES.STATES.TERMINAL_VALID
         )
 
     def action(self, action: ACTION):
         return self.node(
             type="action",
-            label=action,
+            label=self.encode(action),
             style=STYLES.NODES.ACTION
         )
 
     def group(self, group: Group):
         return self.node(
             type="group",
-            label=str(group),
+            label=self.encode(str(group)),
             style=STYLES.NODES.GROUP
         )
 
@@ -61,10 +70,19 @@ class BuilderGraph(DAG):
         return super().link(origin, target, style=STYLES.LINKS.BASE, **config)
 
     def group_action(self, group: Group, action: ACTION):
-        gs = '{' + str(group).replace('|', '\\|').replace('\n', '|') + '}'
+        gs = '{' + str(group) \
+            .replace('|', r'\|') \
+            .replace('\n', '|') \
+            .replace('>', r'\>') \
+            .replace('<', r'\<') \
+            .replace('}', r'\}') \
+            .replace('{', r'\{') + '}'
         return self.node(
-            label=f"{gs}|{action!s}",
-            style=STYLES.NODES.GROUP_ACTION
+            label=self.encode(f"{gs}|{action!s}"),
+            style={
+                INCLUDE: STYLES.NODES.GROUP_ACTION_INC,
+                EXCLUDE: STYLES.NODES.GROUP_ACTION_EXC
+            }.get(action, STYLES.NODES.GROUP_ACTION)
         )
 
     def chain(self, *elements):
@@ -83,9 +101,11 @@ class BuilderGraph(DAG):
             format="svg",
             engine="dot",
             graph_attr=dict(
+                rankdir='TB',
                 ranksep=str(ranksep),
                 color='white',
-                splines='ortho'
+                splines='ortho',
+                bgcolor='black',
             )
         )
 

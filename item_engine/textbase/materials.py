@@ -1,4 +1,4 @@
-from typing import Tuple, List, Dict, Type, Union, Callable
+from typing import Tuple, List, Dict, Type, Union
 import python_generator as pg
 from item_engine import Branch, Group, Rule
 from .items import *
@@ -114,22 +114,19 @@ INT_POW_TO_INT = pg.LAMBDA(
 #                  ")"
 
 
-def gen_symbols(*exprs: str) -> Tuple[List[Branch], Dict[str, TokenI], Dict[str, Symbol]]:
+def gen_symbols(*exprs: str) -> Tuple[List[Branch], Dict[str, Symbol]]:
     branches: List[Branch] = []
-    symbols: Dict[str, TokenI] = {}
-    raw_symbols: Dict[str, Symbol] = {}
+    symbols_register: Dict[str, Symbol] = {}
     for symbol in map(symbol_maker, exprs):
         branches.append(symbol.branch)
-        symbols[symbol.name] = symbol.tokenI
-        raw_symbols[symbol.expr] = symbol
+        symbols_register[symbol.expr] = symbol
 
-    return branches, symbols, raw_symbols
+    return branches, symbols_register
 
 
-def gen_keywords(*exprs: str) -> Tuple[List[Branch], Dict[str, TokenI], Dict[str, Keyword]]:
+def gen_keywords(*exprs: str) -> Tuple[List[Branch], Dict[str, Keyword]]:
     branches = []
-    keywords = {}
-    raw_keywords: Dict[str, Keyword] = {}
+    keyword_register: Dict[str, Keyword] = {}
 
     for expr in exprs:
         ls = len(expr) - len(expr.lstrip(' '))
@@ -138,10 +135,9 @@ def gen_keywords(*exprs: str) -> Tuple[List[Branch], Dict[str, TokenI], Dict[str
 
         keyword = Keyword(expr=expr, ls=ls, rs=rs)
         branches.append(keyword.branch)
-        keywords[keyword.name] = keyword.tokenI
-        raw_keywords[keyword.name] = keyword
+        keyword_register[keyword.name] = keyword
 
-    return branches, keywords, raw_keywords
+    return branches, keyword_register
 
 
 def gen_branches(**config) -> List[Branch]:
@@ -209,13 +205,13 @@ def MakeLexer(
         symbols = []
     if branches is None:
         branches = {}
-    keyword_b, KW, keyword_register = gen_keywords(*keywords)
 
-    symbols_b, SYM, symbols_register = gen_symbols(*symbols)
+    keyword_branches, keyword_register = gen_keywords(*keywords)
+    symbols_branches, symbols_register = gen_symbols(*symbols)
 
     lexer = make_branch_set(
-        *keyword_b,
-        *symbols_b,
+        *keyword_branches,
+        *symbols_branches,
         *gen_branches(**branches)
     )
 

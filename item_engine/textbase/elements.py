@@ -1,3 +1,5 @@
+from dataclasses import dataclass, field
+
 from item_engine import Element, ACTION, STATE, INDEX, T_STATE, INCLUDE, EXCLUDE
 
 __all__ = ["Char", "Token", "Lemma"]
@@ -8,6 +10,7 @@ class HashableDict(dict):
         return hash((type(self), tuple(sorted(self.items(), key=lambda item: item[0]))))
 
 
+@dataclass(frozen=True, order=True)
 class BaseElement(Element):
     @classmethod
     def EOF(cls, start: INDEX):
@@ -17,14 +20,19 @@ class BaseElement(Element):
             value=T_STATE("EOF")
         )
 
+    def eof(self):
+        return self.__class__.EOF(self.end)
+
+    @property
+    def is_eof(self):
+        return self.value == "EOF"
+
     def develop(self, action: ACTION, value: STATE, item: Element) -> Element:
         raise NotImplementedError
 
 
+@dataclass(frozen=True, order=True)
 class Char(BaseElement):
-    def __hash__(self) -> int:
-        return hash((type(self), self.start, self.end, self.value))
-
     @classmethod
     def make(cls, index: INDEX, char: str):
         return Char(
@@ -37,13 +45,9 @@ class Char(BaseElement):
         raise Exception
 
 
+@dataclass(frozen=True, order=True)
 class Token(BaseElement):
-    def __init__(self, start: INDEX, end: INDEX, value: STATE, content: str = ""):
-        super().__init__(start, end, value)
-        self.content: str = content
-
-    def __hash__(self) -> int:
-        return hash((type(self), self.start, self.end, self.value, self.content))
+    content: str = ""
 
     def __str__(self):
         return repr(self.content)
@@ -67,15 +71,9 @@ class Token(BaseElement):
             raise ValueError(action)
 
 
+@dataclass(frozen=True, order=True)
 class Lemma(BaseElement):
-    def __init__(self, start: INDEX, end: INDEX, value: STATE, data=None):
-        super().__init__(start, end, value)
-        if data is None:
-            data = {}
-        self.data: HashableDict = HashableDict(**data)
-
-    def __hash__(self) -> int:
-        return hash((type(self), self.start, self.end, self.value, self.data))
+    data: HashableDict = field(default_factory=HashableDict)
 
     def develop(self, action: ACTION, value: STATE, item: Token):
         data = HashableDict(self.data)

@@ -24,7 +24,7 @@ class Optimized_Match(Match):
             count = 0
             result = None
             for builder in self.builders:
-                result = builder.parse(tokens, position, parser, backward)
+                result = builder.generate_output(tokens, position, parser, backward)
                 if result:
                     return result
                 else:

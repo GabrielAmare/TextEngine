@@ -1,7 +1,7 @@
 from typing import Tuple
 
 from item_engine.constants import *
-from item_engine.linear_formal_network import Model as LFN_Model
+from item_engine.lin_lin_network import Model as LL_Model
 from item_engine.textbase import make_characters, Char, Token
 
 if __name__ == '__main__':
@@ -12,22 +12,22 @@ if __name__ == '__main__':
     def memorize(function):
         cache = {}
 
-        def wrapper(value, element):
-            key = (value, element.value)
+        def wrapper(token, char):
+            key = (token.value, char.value)
             global calls_to
             calls_to.setdefault(key, 0)
             calls_to[key] += 1
             if key in cache:
                 return cache[key]
             else:
-                cache[key] = result = function(value, element)
+                cache[key] = result = function(token, char)
                 return result
 
         return wrapper
 
 
     @memorize
-    def function(value: NT_STATE, element) -> Tuple[ACTION, STATE]:
+    def function(token: Token, char) -> Tuple[ACTION, STATE]:
         """
         parser for :
             VAR = 'abcdefghijklmnopqrstuvwxyz'+
@@ -40,88 +40,88 @@ if __name__ == '__main__':
             LP = '('
             RP = ')'
         """
-        if value == 0:
-            if element.value == '=':
+        if token.value == 0:
+            if char.value == '=':
                 return INCLUDE, 'EQUAL'
-            elif element.value == '+':
+            elif char.value == '+':
                 return INCLUDE, 7
-            elif element.value == '(':
+            elif char.value == '(':
                 return INCLUDE, 'LP'
-            elif element.value == ')':
+            elif char.value == ')':
                 return INCLUDE, 'RP'
-            elif element.value == '/':
+            elif char.value == '/':
                 return INCLUDE, 'SLASH'
-            elif element.value == '-':
+            elif char.value == '-':
                 return INCLUDE, 'DASH'
-            elif element.value == ' ':
+            elif char.value == ' ':
                 return INCLUDE, 6
-            elif element.value in 'abcefghijklmnopqrstuvwxyz':
+            elif char.value in 'abcefghijklmnopqrstuvwxyz':
                 return INCLUDE, 1
-            elif element.value in 'd':
+            elif char.value in 'd':
                 return INCLUDE, 3
-            elif element.value in '0123456789':
+            elif char.value in '0123456789':
                 return INCLUDE, 8
             else:
                 return EXCLUDE, '!'
-        elif value == 1:
-            if element.value in 'abcdefghijklmnopqrstuvwxyz':
+        elif token.value == 1:
+            if char.value in 'abcdefghijklmnopqrstuvwxyz':
                 return INCLUDE, 1
-            elif element.value in '0123456789':
+            elif char.value in '0123456789':
                 return INCLUDE, 2
             else:
                 return EXCLUDE, 'VAR'
-        elif value == 2:
-            if element.value in '0123456789':
+        elif token.value == 2:
+            if char.value in '0123456789':
                 return INCLUDE, 2
             else:
                 return EXCLUDE, 'VAR_NUM'
-        elif value == 3:
-            if element.value == 'e':
+        elif token.value == 3:
+            if char.value == 'e':
                 return INCLUDE, 4
-            elif element.value in 'abcdfghijklmnopqrstuvwxyz':
+            elif char.value in 'abcdfghijklmnopqrstuvwxyz':
                 return INCLUDE, 1
-            elif element.value in '0123456789':
+            elif char.value in '0123456789':
                 return INCLUDE, 2
             else:
                 return EXCLUDE, 'VAR'
-        elif value == 4:
-            if element.value == 'f':
+        elif token.value == 4:
+            if char.value == 'f':
                 return INCLUDE, 5
-            elif element.value in 'abcdeghijklmnopqrstuvwxyz':
+            elif char.value in 'abcdeghijklmnopqrstuvwxyz':
                 return INCLUDE, 1
-            elif element.value in '0123456789':
+            elif char.value in '0123456789':
                 return INCLUDE, 2
             else:
                 return EXCLUDE, 'VAR'
-        elif value == 5:
-            if element.value in 'abcdefghijklmnopqrstuvwxyz':
+        elif token.value == 5:
+            if char.value in 'abcdefghijklmnopqrstuvwxyz':
                 return INCLUDE, 1
-            elif element.value in '0123456789':
+            elif char.value in '0123456789':
                 return INCLUDE, 2
             else:
                 return EXCLUDE, 'KW_DEF'
-        elif value == 6:
-            if element.value == ' ':
+        elif token.value == 6:
+            if char.value == ' ':
                 return INCLUDE, 6
             else:
                 return EXCLUDE, 'SPACE'
-        elif value == 7:
-            if element.value == '+':
+        elif token.value == 7:
+            if char.value == '+':
                 return INCLUDE, 'PLUS_PLUS'
-            elif element.value == '=':
+            elif char.value == '=':
                 return INCLUDE, 'PLUS_EQUAL'
             else:
                 return EXCLUDE, 'PLUS'
-        elif value == 8:
-            if element.value in '0123456789':
+        elif token.value == 8:
+            if char.value in '0123456789':
                 return INCLUDE, 8
             else:
                 return EXCLUDE, 'NUM'
         else:
-            raise Exception(f"invalid value : {value!r}")
+            raise Exception(f"invalid value : {token.value!r}")
 
 
-    net = LFN_Model(
+    net = LL_Model(
         input_cls=Char,
         output_cls=Token,
         function=function,
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     text = ''.join(random.choice(alphabet) for _ in range(size))
     t = time.time()
     try:
-        tokens = net.tokenize(make_characters(text))
+        tokens = net.generate(make_characters(text))
         d = time.time() - t
 
         print(f"{round((1e6 * d) / len(text))} μs/char [{len(text)} chars]")
@@ -166,7 +166,7 @@ if __name__ == '__main__':
 
     from tools37 import ReprTable
 
-    print(ReprTable.from_items(items=net.tokenize(make_characters(text)), config=dict(
+    print(ReprTable.from_items(items=net.generate(make_characters(text)), config=dict(
         span=lambda token: f"{token.start} → {token.end}",
         type=lambda token: token.value,
         content=lambda token: token.content

@@ -1,282 +1,182 @@
 from __future__ import annotations
-import os
-from dataclasses import dataclass, field
-from typing import List, Dict, Union, Tuple, FrozenSet, Iterator, Optional, Callable
 
+import os
+from dataclasses import dataclass
+from typing import Dict, List, Callable, Iterator, Tuple, Optional
 import python_generator as pg
 
-from .utils import *
-from .items import *
-from .branches import *
-from .generate import *
-from .constants import NT_STATE, STATE
+from .generate import L0, L1, L2, L3, L4, L5, L6
+from .generic_items import GenericItem, GenericItemSet, optimized
+from .branches import BranchSet, Branch
+from .constants import ACTION, STATE, NT_STATE
+from .items import Group
 
-__all__ = ["Parser", "Engine", ]
+__all__ = ["Parser", "Engine"]
 
 
-@dataclass
-class ActionToBranchSet:
-    data: Dict[str, BranchSet] = field(default_factory=dict)
+class AmbiguityException(Exception):
+    pass
 
-    def __iter__(self):
-        return iter(self.data.items())
 
-    def __hash__(self):
-        return hash((type(self), frozenset(self.data.items())))
+@dataclass(frozen=True, order=True)
+class ActionToBranch(GenericItem):
+    action: ACTION
+    branch: Branch
 
-    def __bool__(self):
-        return bool(self.data)
+    @property
+    def as_group(self) -> Outcome:
+        return Outcome({self})
 
-    def add(self, action: str, obj: Union[Branch, BranchSet]):
-        if isinstance(obj, Branch):
-            obj = BranchSet(frozenset({obj}))
 
-        if action in self.data:
-            self.data[action] |= obj
-        else:
-            self.data[action] = obj
-
-    def __or__(self, other):
-        assert isinstance(other, ActionToBranchSet)
-        atbs = ActionToBranchSet()
-        for action, branch_set in (*self, *other):
-            atbs.add(action, branch_set)
-
+class Outcome(GenericItemSet[ActionToBranch]):
+    @property
+    def atbs(self) -> PickAction:
+        atbs: PickAction = PickAction()
+        for atb in self.items:
+            atbs.add(atb.action, atb.branch)
         return atbs
 
-    __ior__ = __or__
 
-    def _ast(self, get_bs_code: Callable[[BranchSet], STATE], throw_errors: bool) -> Iterator[L0]:
-        for action, branch_set in self:
+class GroupToOutcome(Dict[Group, Outcome]):
+    @classmethod
+    def from_branch_set(cls, branch_set: BranchSet) -> GroupToOutcome:
+        self: GroupToOutcome = cls()
+        for branch in branch_set.items:
+            for first, after in branch.splited:
+                self.add(first.group, first.action, branch.new_rule(after))
+        return self
+
+    @property
+    def optimized(self) -> GroupToOutcome:
+        return GroupToOutcome(optimized(self))
+
+    def add(self, group: Group, action: ACTION, branch: Branch) -> None:
+        atb = ActionToBranch(action, branch)
+        if group in self:
+            self[group] |= atb.as_group
+        else:
+            self[group] = atb.as_group
+
+
+FUNC = Callable[[BranchSet], STATE]
+
+
+class PickAction(Dict[ACTION, BranchSet]):
+    def add(self, action: ACTION, branch: Branch) -> None:
+        if action in self:
+            self[action] |= branch.as_group
+        else:
+            self[action] = branch.as_group
+
+    def l0s(self, func: FUNC, throw_errors: bool) -> Iterator[L0]:
+        for action, branch_set in self.items():
             if branch_set.terminal:
                 for value in branch_set.terminal_code(throw_errors):
                     yield L0(action=action, value=value)
             else:
-                yield L0(action=action, value=get_bs_code(branch_set))
+                yield L0(action=action, value=func(branch_set))
 
-    def ast(self, get_bs_code: Callable[[BranchSet], STATE]) -> L1:
-        throw_errors = not all(branch.is_error for branch_set in self.data.values() for branch in branch_set.items)
+    def l1(self, func: FUNC, formal: bool = False) -> L1:
+        # we throw errors when there's something different than an error
+        throw_errors = not all(branch.is_error for branch_set in self.values() for branch in branch_set.items)
 
-        return L1(cases=list(self._ast(get_bs_code, throw_errors)))
+        cases = list(self.l0s(func, throw_errors))
 
+        if formal and len(cases) != 1:
+            raise AmbiguityException()
 
-@dataclass
-class ActionCase:
-    action: str
-    branch_set: BranchSet
-
-
-@dataclass
-class ItemCase:
-    group: Group
-    atbs: ActionToBranchSet
+        return L1(cases=cases)
 
 
-@dataclass
-class ValueSwitch:
-    cases: List[ItemCase]
-    default: ActionToBranchSet
-
-
-@dataclass
-class ValueCase:
-    origin: BranchSet
-    cases: Dict[Group, ActionToBranchSet]
-    default: ActionToBranchSet
-    always: ActionToBranchSet
-
-    def __iter__(self) -> Iterator[Tuple[Group, ActionToBranchSet]]:
-        for group, atbs in sorted(self.cases.items(), key=lambda pair: -sum(bs.terminal for act, bs in pair[1])):
-            yield group, atbs
-
-
-class ItemSigns:
-    def __init__(self, items: List[Item], groups: List[Group]):
-        self.items: List[Item] = items
-        self.signs: List[str] = [
-            ''.join('01'[item in group] for group in groups)
-            for item in self.items
-        ]
-
-    def __iter__(self) -> Iterator[Tuple[Item, str]]:
-        return iter(zip(self.items, self.signs))
-
-
-class SignToGroup(Dict[str, Group]):
-    def add(self, sign: str, group: Group):
-        if sign in self:
-            self[sign] |= group
-        else:
-            self[sign] = group
-
-    @classmethod
-    def make(cls, item_signs: ItemSigns, group_cls):
-        self: cls = cls()
-        for item, sign in item_signs:
-            self.add(sign, group_cls(frozenset({item})))
-
-        return self
-
-
-class Flattened:
-    def __init__(self, branch_set: BranchSet):
-        self.actions: List[str] = []
-        self.groups: List[Group] = []
-        self.branches: List[Branch] = []
-        self.data: List[Tuple[str, Group, Branch]] = []
-
-        for branch in branch_set.items:
-            for first, after in branch.splited:
-                self.actions.append(first.action)
-                self.groups.append(first.group)
-                self.branches.append(branch.new_rule(after))
-
-    def __iter__(self) -> Iterator[Tuple[str, Group, Branch]]:
-        return iter(zip(self.actions, self.groups, self.branches))
-
-
-class ItemCases(Dict[Item, ActionToBranchSet]):
-    def add(self, item: Item, action: str, branch: Branch):
-        if item in self:
-            self[item].add(action, branch)
-        else:
-            self[item] = ActionToBranchSet({action: BranchSet(frozenset({branch}))})
-
-    @classmethod
-    def make(cls, items: List[Item], flattened: Flattened):
-        self: cls = cls()
-
-        for action, group, branch in flattened:
-            if not group.is_always:
-                for item in items:
-                    if item in group:
-                        self.add(item, action, branch)
-
-        return self
-
-
-class GroupCases(Dict[Group, ActionToBranchSet]):
-    def add(self, group: Group, atbs: ActionToBranchSet):
-        if group in self:
-            self[group] |= atbs
-        else:
-            self[group] = atbs
-
-    @classmethod
-    def make(cls, items: List[Item], flattened: Flattened, group_cls):
-        item_cases: ItemCases = ItemCases.make(
-            items=items,
-            flattened=flattened
-        )
-
-        item_signs: ItemSigns = ItemSigns(
-            items=items,
-            groups=flattened.groups
-        )
-
-        s2g: SignToGroup = SignToGroup.make(
-            item_signs=item_signs,
-            group_cls=group_cls
-        )
-
-        self: cls = cls()
-        for item, sign in item_signs:
-            self.add(s2g[sign], item_cases[item])
-        return self
+class PickGroup(Dict[Group, PickAction]):
+    @staticmethod
+    def from_gto(gto: GroupToOutcome) -> PickGroup:
+        return PickGroup({
+            group: outcome.atbs
+            for group, outcome in gto.items()
+        })
 
     @property
-    def non_terminal_branch_sets(self) -> Iterator[BranchSet]:
+    def branch_sets(self) -> Iterator[BranchSet]:
         for atbs in self.values():
-            for branch_set in atbs.data.values():
-                if not branch_set.terminal:
-                    yield branch_set
+            for branch_set in atbs.values():
+                yield branch_set
 
-    def pop_default(self) -> ActionToBranchSet:
-        for group in self.keys():
-            if AnyOther() in group:
-                return self.pop(group)
-        else:
-            return ActionToBranchSet()
+    @property
+    def cases(self) -> Iterator[Tuple[Group, PickAction]]:
+        for group, atbs in self.items():
+            if not group.inverted:
+                yield group, atbs
+
+    @property
+    def default(self) -> PickAction:
+        for group, atbs in self.items():
+            if group.inverted:
+                return atbs
+        return PickAction()
+
+    def l2s(self, func: FUNC, formal: bool = False) -> Iterator[L2]:
+        for group, atbs in self.cases:
+            yield L2(group=group, l1=atbs.l1(func, formal))
+
+    def l3(self, func: FUNC, formal: bool = False) -> L3:
+        return L3(cases=list(self.l2s(func)), default=self.default.l1(func, formal))
+
+
+class PickBranchSet(Dict[BranchSet, PickGroup]):
+    def l4s(self, func: FUNC, formal: bool = False) -> Iterator[L4]:
+        for origin, gtatbs in self.items():
+            yield L4(value=func(origin), switch=gtatbs.l3(func, formal))
+
+    def l5(self, func: FUNC, formal: bool = False) -> L5:
+        return L5(cases=list(self.l4s(func, formal)))
 
 
 class Parser:
-    def __init__(self, name: str, branch_set: BranchSet, group_cls: type, reflexive: bool = False,
-                 show_progress: bool = True):
-        self.name = name
-        self.reflexive = reflexive
+    def __init__(self,
+                 name: str,
+                 branch_set: BranchSet,
+                 reflexive: bool = False,
+                 formal: bool = False
+                 ):
+        self.name: str = name
+        self.branch_sets: List[BranchSet] = [branch_set]
+        self.pbs: PickBranchSet = PickBranchSet()
+        self.reflexive: bool = reflexive
+        self.formal: bool = formal
 
-        base_items: FrozenSet[Item] = branch_set.alphabet
+        self.build()
 
-        self.group_any_other = group_cls(base_items, False)
+    def build(self) -> None:
+        index = 0
+        while index < len(self.branch_sets):
+            branch_set: BranchSet = self.branch_sets[index]
+            gtatbs: PickGroup = self.extract(branch_set)
+            self.pbs[branch_set] = gtatbs
+            self.include(gtatbs)
+            index += 1
 
-        self.branch_sets: List[BranchSet] = []
-        todo: Pile[BranchSet] = Pile(branch_set)
+    def include(self, gtatbs: PickGroup) -> None:
+        for branch_set in gtatbs.branch_sets:
+            if branch_set.terminal:
+                continue
 
-        self.value_cases: List[ValueCase] = []
+            if branch_set in self.branch_sets:
+                continue
 
-        for branch_set in todo:
             self.branch_sets.append(branch_set)
-            if show_progress:
-                print(f'handling case n°{self.branch_sets.index(branch_set)}')
 
-            flattened: Flattened = Flattened(branch_set)
-
-            group_cases: GroupCases = GroupCases.make(
-                items=sorted(base_items) + [AnyOther()],
-                flattened=flattened,
-                group_cls=group_cls
-            )
-
-            default: ActionToBranchSet = group_cases.pop_default()
-
-            always: ActionToBranchSet = ActionToBranchSet()
-            for action, group, branch in flattened:
-                if group.is_always:
-                    default.add(action, branch)
-                    # always.add(action, branch)
-
-            self.value_cases.append(
-                ValueCase(
-                    origin=branch_set,
-                    cases=group_cases,
-                    default=default,
-                    always=always
-                )
-            )
-
-            for bs in group_cases.non_terminal_branch_sets:
-                if bs not in self.branch_sets:
-                    if bs not in todo:
-                        todo.append(bs)
-                        # print(repr(bs))
-
-        if show_progress:
-            print('all cases handled !')
+    def extract(self, branch_set: BranchSet) -> PickGroup:
+        gto: GroupToOutcome = GroupToOutcome.from_branch_set(branch_set).optimized
+        gtatbs: PickGroup = PickGroup.from_gto(gto)
+        return gtatbs
 
     def get_nt_state(self, branch_set: BranchSet) -> NT_STATE:
         return NT_STATE(self.branch_sets.index(branch_set))
 
     @property
-    def l6(self):
-        return L6(
-            name=self.name,
-            l5=L5(
-                cases=[
-                    L4(
-                        value=self.get_nt_state(value_case.origin),
-                        switch=L3(
-                            cases=[
-                                L2(group=group, l1=atbs.ast(self.get_nt_state))
-                                for group, atbs in value_case
-                            ],
-                            default=value_case.default.ast(self.get_nt_state)
-                        ),
-                        always=value_case.always.ast(self.get_nt_state)
-                    )
-                    for value_case in self.value_cases
-                ]
-            )
-        )
+    def l6(self) -> L6:
+        return L6(name=self.name, l5=self.pbs.l5(self.get_nt_state, self.formal))
 
     @property
     def code(self) -> pg.MODULE:
@@ -285,7 +185,11 @@ class Parser:
 
 
 class Engine:
-    def __init__(self, name: str, parsers: List[Parser], operators: Optional[pg.MODULE] = None):
+    def __init__(self,
+                 name: str,
+                 parsers: List[Parser],
+                 operators: Optional[pg.MODULE] = None
+                 ):
         assert name.isidentifier()
         assert not any(parser.name == 'operators' for parser in parsers)
         self.name: str = name

@@ -88,3 +88,8 @@ class BranchSet(GenericItemSet[Branch]):
             for first, after in branch.splited:
                 yield first.group, first.action, branch.new_rule(after)
 
+    def append(self, other: Branch) -> BranchSet:
+        return self + other
+
+    def extend(self, other: BranchSet) -> BranchSet:
+        return self | other

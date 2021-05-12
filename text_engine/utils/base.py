@@ -148,10 +148,12 @@ PATTERN_LIBS = {
 }
 
 
-def base(*cls_rules, **config):
+def base(*cls_rules, pattern_libs=None, **config):
+    if pattern_libs is None:
+        pattern_libs = []
     lexer = Lexer()
 
-    for pattern_lib_name in config.get("pattern_libs", []):
+    for pattern_lib_name in pattern_libs:
         for pattern_config in PATTERN_LIBS.get(pattern_lib_name, []):
             lexer.add_pattern(**pattern_config)
 

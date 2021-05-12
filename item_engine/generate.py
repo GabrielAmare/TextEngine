@@ -13,7 +13,10 @@ import python_generator as pg
 
 GBS = Callable[[BranchSet], int]
 
-__all__ = ("L0", "L1", "L2", "L3", "L4", "L5", "L6")
+__all__ = [
+    "L0", "L1", "L2", "L3", "L4", "L5", "L6",
+    "F0", "F1"
+]
 
 
 @dataclass
@@ -33,6 +36,27 @@ class L1:
     @property
     def code(self) -> pg.LINES:
         return pg.LINES(lines=[case.code for case in self.cases])
+
+
+@dataclass
+class F0:
+    """formal L0"""
+    action: ACTION
+    value: STATE
+
+    @property
+    def code(self) -> pg.RETURN:
+        return pg.RETURN(line=f"{self.action!r}, {self.value!r}")
+
+
+@dataclass
+class F1:
+    """formal L1"""
+    case: F0
+
+    @property
+    def code(self) -> pg.LINES:
+        return pg.LINES(lines=[self.case.code])
 
 
 @dataclass
@@ -62,7 +86,7 @@ class L3:
 class L4:
     value: NT_STATE
     switch: L3
-    always: Optional[L1]
+    always: Optional[L1] = None
 
     @property
     def code(self) -> pg.IF:
@@ -141,7 +165,7 @@ class L6:
 
     @property
     def graph(self, **config):
-        dag = BuilderGraph(**config)
+        dag = BuilderGraph(**config, name=self.name)
 
         branch_set_nodes: Dict[STATE, Node] = {}
         errors: Dict[T_STATE, Node] = {}
@@ -150,6 +174,7 @@ class L6:
         def get_branch_set_node(value: STATE):
             if isinstance(value, T_STATE):
                 if value.startswith('!'):
+                    value = '!' + '|'.join(sorted(value[1:].split('|')))
                     if value not in errors:
                         errors[value] = dag.terminal_error_state(value)
                     return errors[value]
@@ -198,17 +223,17 @@ class L6:
         for l4 in self.l5.cases:
             for l2 in l4.switch.cases:
                 if l2.l1.cases:
-                    for l0 in l2.l1.cases:
+                    for l0 in sorted(l2.l1.cases, key=lambda l0: not isinstance(l0.value, str)):
                         make_chain(l4.value, l2.group, l0.action, l0.value)
 
             group = Group(frozenset())
             if l4.switch.default.cases:
-                for l0 in l4.switch.default.cases:
+                for l0 in sorted(l4.switch.default.cases, key=lambda l0: not isinstance(l0.value, str)):
                     make_chain(l4.value, group, l0.action, l0.value)
 
-            group = Group(frozenset(), inverted=True)
-            if l4.always.cases:
-                for l0 in l4.always.cases:
-                    make_chain(l4.value, group, l0.action, l0.value)
+            # group = Group(frozenset(), inverted=True)
+            # if l4.always.cases:
+            #     for l0 in l4.always.cases:
+            #         make_chain(l4.value, group, l0.action, l0.value)
 
         return dag

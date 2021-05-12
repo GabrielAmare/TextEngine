@@ -1,19 +1,23 @@
 from __future__ import annotations
-from typing import *
+from typing import Callable, Tuple, List, Iterator, Generator, Type, Generic
+
+from ..constants import NT_STATE, ACTION, STATE
 
 from .Instance import Instance
 from .WithSkips import WithSkips
 from .WithoutSkips import WithoutSkips
 
-from .constants import E, F, FORMAL_FUNCTION
+from .constants import E, F
 
 __all__ = ["Model"]
+
+FUNCTION = Callable[[F, E], Tuple[ACTION, STATE]]
 
 
 class Model(Generic[E, F]):
     """works when two EXCLUDE actions cannot be consecutive"""
 
-    def __init__(self, input_cls: Type[E], output_cls: Type[F], function: FORMAL_FUNCTION, skips: List[str] = None):
+    def __init__(self, input_cls: Type[E], output_cls: Type[F], function: FUNCTION, skips: List[str] = None):
         """
 
         :param input_cls: The Element class of the inputs
@@ -25,7 +29,7 @@ class Model(Generic[E, F]):
             skips = []
         self.input_cls: Type[E] = input_cls
         self.output_cls: Type[F] = output_cls
-        self.function: FORMAL_FUNCTION = function
+        self.function: FUNCTION = function
         self.skips: List[str] = skips
 
     @property
@@ -36,13 +40,13 @@ class Model(Generic[E, F]):
         else:
             return WithoutSkips(model=self)
 
-    def tokenize(self, inputs: Iterator[E]) -> List[F]:
-        return self.instance.tokenize(inputs)
+    def generate(self, inputs: Iterator[E]) -> List[F]:
+        return self.instance.generate(inputs)
 
-    def i_tokenize(self, inputs: Iterator[E]) -> Generator[F, None, None]:
-        yield from self.instance.i_tokenize(inputs)
+    def i_generate(self, inputs: Iterator[E]) -> Generator[F, None, None]:
+        yield from self.instance.i_generate(inputs)
 
     def parse(self, inputs: Iterator[E]) -> Instance[E, F]:
         instance = self.instance
-        instance.tokenize(inputs)
+        instance.generate(inputs)
         return instance

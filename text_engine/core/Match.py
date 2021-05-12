@@ -23,7 +23,7 @@ class Match(Rule, Identified):
             count = 0
             result = None
             for builder in parser.get_all_matching_builders(self.identifier):
-                result = builder.parse(tokens, position, parser, backward)
+                result = builder.generate_output(tokens, position, parser, backward)
                 if result:
                     return result
                 else:

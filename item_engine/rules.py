@@ -240,6 +240,14 @@ class All(RuleList):
     def terminal(self) -> bool:
         return len(self.rules) == 1 and self.rules[0].terminal
 
+    @property
+    def is_valid(self) -> bool:
+        return len(self.rules) == 1 and self.rules[0].is_valid
+
+    @property
+    def is_error(self) -> bool:
+        return len(self.rules) == 1 and self.rules[0].is_error
+
 
 @dataclass(frozen=True, order=True)
 class Any(RuleList):
@@ -256,6 +264,14 @@ class Any(RuleList):
     @property
     def terminal(self) -> bool:
         return all(rule.terminal for rule in self.rules)
+
+    @property
+    def is_valid(self) -> bool:
+        return all(rule.is_valid for rule in self.rules)
+
+    @property
+    def is_error(self) -> bool:
+        return all(rule.is_error for rule in self.rules)
 
 
 ########################################################################################################################

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Generic
+from typing import Generic, Generator
 
 from .Instance import Instance
 from .constants import E, F
@@ -7,7 +7,7 @@ from .constants import E, F
 __all__ = ["WithoutSkips"]
 
 
-class WithoutSkips(Instance, Generic[E, F]):
+class WithoutSkips(Instance[E, F], Generic[E, F]):
     def do_return(self, output: F) -> bool:
         return True
 
