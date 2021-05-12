@@ -7,40 +7,10 @@ from .base_materials import *
 from .operators import OP, UNIT, ENUM
 
 __all__ = [
-    "digits", "digits_pow", "digits_bin", "digits_oct", "digits_hex",
-    "letters", "LETTERS", "alpha", "alphanum",
-    "dot",
-    "n_alphanum",
-    "sq", "dq", "n_sq", "n_dq", "e_sq", "e_dq",
-
     "gen_symbols", "gen_keywords", "gen_branches", "gen_operators",
-    "GroupMaker",
-    "MakeLexer", "MakeParser",
-    "INT_POW_TO_INT"
+    "GroupMaker", "SymbolMaker",
+    "MakeLexer", "MakeParser"
 ]
-
-digits = charset("0123456789").inc()
-digits_pow = charset("⁰¹²³⁴⁵⁶⁷⁸⁹").inc()
-digits_bin = charset("01").inc()
-digits_oct = charset("01234567").inc()
-digits_hex = charset('0123456789' + 'abcdef' + 'ABCDEF').inc()
-
-letters = charset('abcdefghijklmnopqrstuvwxyz').inc()
-LETTERS = charset('ABCDEFGHIJKLMNOPQRSTUVWXYZ').inc()
-alpha = charset('abcdefghijklmnopqrstuvwxyz' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' + '_').inc()
-alphanum = charset('abcdefghijklmnopqrstuvwxyz' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' + '_' + '0123456789').inc()
-
-dot = charset(".").inc()
-
-n_alphanum = (~alphanum.group).inc()
-
-sq = charset("'").inc()
-dq = charset('"').inc()
-
-n_sq = (~sq.group).inc()
-n_dq = (~dq.group).inc()
-e_sq = string("\\'")
-e_dq = string('\\"')
 
 
 class GroupMaker:
@@ -97,21 +67,6 @@ symbol_maker = SymbolMaker(
     PART="∂", EMPTY="∅", NABLA="∇", PROD="∏", SUM="∑", MINUS="−", LOWAST="∗", RADIC="√", SDOT="⋅",
     PROP="∝", INFIN="∞", ANG="∠", INT="∫", SIM="∼", CONG="≅", ASYMP="≈", NE="≠", LE="≤", GE="≥",
 )
-_POW_INT_CHARS = {"⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9"}
-_POW_INT_ORDS = {ord(k): ord(v) for k, v in _POW_INT_CHARS.items()}
-
-INT_POW_TO_INT = pg.LAMBDA(
-    args=["content"],
-    expr=pg.CALL(
-        name="content.translate",
-        args=pg.ARGS(pg.DICT(_POW_INT_ORDS))
-    )
-)
-
-
-# INT_POW_TO_INT = "lambda content: content.translate(" \
-#                  "{8304: 48, 185: 49, 178: 50, 179: 51, 8308: 52, 8309: 53, 8310: 54, 8311: 55, 8312: 56}" \
-#                  ")"
 
 
 def gen_symbols(*exprs: str) -> Tuple[List[Branch], Dict[str, Symbol]]:

@@ -1,5 +1,6 @@
 from item_engine import *
 
+from .constants import *
 from .items import *
 from .elements import *
 from .functions import *
