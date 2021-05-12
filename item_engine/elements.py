@@ -14,6 +14,14 @@ class Element:
     end: INDEX
     value: STATE
 
+    @classmethod
+    def EOF(cls, start: INDEX):
+        return cls(
+            start=start,
+            end=start,
+            value=T_STATE("EOF")
+        )
+
     @property
     def span(self) -> Tuple[INDEX, INDEX]:
         return self.start, self.end
@@ -37,9 +45,12 @@ class Element:
     def develop(self, action: ACTION, value: STATE, item: Element) -> Element:
         raise NotImplementedError
 
-    @classmethod
-    def EOF(cls, start: INDEX) -> Element:
-        raise NotImplementedError
+    def eof(self):
+        return self.__class__.EOF(self.end)
+
+    @property
+    def is_eof(self):
+        return self.value == "EOF"
 
     def lt(self, other: Element) -> bool:
         return self.end < other.start

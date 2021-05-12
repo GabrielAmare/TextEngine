@@ -11,28 +11,7 @@ class HashableDict(dict):
 
 
 @dataclass(frozen=True, order=True)
-class BaseElement(Element):
-    @classmethod
-    def EOF(cls, start: INDEX):
-        return cls(
-            start=start,
-            end=start,
-            value=T_STATE("EOF")
-        )
-
-    def eof(self):
-        return self.__class__.EOF(self.end)
-
-    @property
-    def is_eof(self):
-        return self.value == "EOF"
-
-    def develop(self, action: ACTION, value: STATE, item: Element) -> Element:
-        raise NotImplementedError
-
-
-@dataclass(frozen=True, order=True)
-class Char(BaseElement):
+class Char(Element):
     @classmethod
     def make(cls, index: INDEX, char: str):
         return Char(
@@ -46,7 +25,7 @@ class Char(BaseElement):
 
 
 @dataclass(frozen=True, order=True)
-class Token(BaseElement):
+class Token(Element):
     content: str = ""
 
     def __str__(self):
@@ -72,7 +51,7 @@ class Token(BaseElement):
 
 
 @dataclass(frozen=True, order=True)
-class Lemma(BaseElement):
+class Lemma(Element):
     data: HashableDict = field(default_factory=HashableDict)
 
     def develop(self, action: ACTION, value: STATE, item: Token):
