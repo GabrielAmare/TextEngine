@@ -19,26 +19,26 @@ __all__ = [
     "INT_POW_TO_INT"
 ]
 
-digits = charset("0123456789").match("include")
-digits_pow = charset("⁰¹²³⁴⁵⁶⁷⁸⁹").match("include")
-digits_bin = charset("01").match("include")
-digits_oct = charset("01234567").match("include")
-digits_hex = charset('0123456789' + 'abcdef' + 'ABCDEF').match("include")
+digits = charset("0123456789").inc()
+digits_pow = charset("⁰¹²³⁴⁵⁶⁷⁸⁹").inc()
+digits_bin = charset("01").inc()
+digits_oct = charset("01234567").inc()
+digits_hex = charset('0123456789' + 'abcdef' + 'ABCDEF').inc()
 
-letters = charset('abcdefghijklmnopqrstuvwxyz').match("include")
-LETTERS = charset('ABCDEFGHIJKLMNOPQRSTUVWXYZ').match("include")
-alpha = charset('abcdefghijklmnopqrstuvwxyz' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' + '_').match("include")
-alphanum = charset('abcdefghijklmnopqrstuvwxyz' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' + '_' + '0123456789').match("include")
+letters = charset('abcdefghijklmnopqrstuvwxyz').inc()
+LETTERS = charset('ABCDEFGHIJKLMNOPQRSTUVWXYZ').inc()
+alpha = charset('abcdefghijklmnopqrstuvwxyz' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' + '_').inc()
+alphanum = charset('abcdefghijklmnopqrstuvwxyz' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' + '_' + '0123456789').inc()
 
-dot = charset(".").match("include")
+dot = charset(".").inc()
 
-n_alphanum = (~alphanum.group).match("include")
+n_alphanum = (~alphanum.group).inc()
 
-sq = charset("'").match("include")
-dq = charset('"').match("include")
+sq = charset("'").inc()
+dq = charset('"').inc()
 
-n_sq = (~sq.group).match("include")
-n_dq = (~dq.group).match("include")
+n_sq = (~sq.group).inc()
+n_dq = (~dq.group).inc()
 e_sq = string("\\'")
 e_dq = string('\\"')
 

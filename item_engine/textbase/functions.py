@@ -16,11 +16,11 @@ def string(s: str) -> All:
 
 
 def match(cs: CharG) -> Match:
-    return cs.match("include")
+    return cs.inc()
 
 
 def non_match(cs: CharG) -> Match:
-    return cs.match("ignore")
+    return cs.exc()
 
 
 def make_characters(text: str) -> Iterator[Char]:

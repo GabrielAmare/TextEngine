@@ -14,7 +14,7 @@ STATE = Union[NT_STATE, T_STATE]
 INDEX = int
 POSITION = int
 
-INCLUDE: ACTION = "include"
-EXCLUDE: ACTION = "exclude"
+INCLUDE: ACTION = "∈"
+EXCLUDE: ACTION = "∉"
 AS: ACTION = "as:{}"
 IN: ACTION = "in:{}"

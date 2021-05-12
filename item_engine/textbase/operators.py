@@ -1,6 +1,6 @@
 from typing import Tuple, Union, List, Optional
 
-from item_engine import Group, Match, Branch, All, INF
+from item_engine import Group, Match, Branch, All, INF, INCLUDE, AS
 import python_generator as pg
 
 from .base_materials import Symbol, Keyword
@@ -64,10 +64,10 @@ class OP:
         self.n = 0
         for child in self.childs:
             if isinstance(child, (Symbol, Keyword)):
-                self.matches.append(Match(child.tokenG, "include"))
+                self.matches.append(Match(child.tokenG, INCLUDE))
                 self.as_str += str(child).replace('{', '{{').replace('}', '}}')
             elif isinstance(child, Group):
-                self.matches.append(Match(child, f"as:c{self.n}"))
+                self.matches.append(child.as_(AS.format(f"c{self.n}")))
                 self.args.append(f"build(e.data['c{self.n}'])")
                 self.as_str += f"{{self.c{self.n}!s}}"
                 self.n += 1
@@ -159,7 +159,7 @@ class ENUM:
         br_name = f"__{cls_name.upper()}__"
         return Branch(
             name=br_name,
-            rule=Match(self.g, "in:cs") & (Match(self.s.tokenG, "include") & Match(self.g, "in:cs")).repeat(1, INF),
+            rule=self.g.in_("cs") & (self.s.tokenG.inc() & self.g.in_("cs")).repeat(1, INF),
             priority=0,
             transfer=False
         )
