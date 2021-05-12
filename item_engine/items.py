@@ -4,7 +4,7 @@ from typing import FrozenSet, Type, TypeVar, Generic
 
 import python_generator as pg
 
-__all__ = ["Item", "AnyOther", "Group"]
+__all__ = ["Item", "Group"]
 
 from .generic_items import GenericItem, GenericItemSet
 from .constants import INCLUDE, EXCLUDE, AS, IN
@@ -30,11 +30,6 @@ class Item(GenericItem):
 
     def in_(self, key):
         return self.as_group.in_(key)
-
-
-@dataclass(frozen=True, order=True)
-class AnyOther(Item):
-    pass
 
 
 E = TypeVar("E", bound=Item)
