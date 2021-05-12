@@ -1,4 +1,4 @@
-from item_engine.branches import Branch
+from item_engine.base import Branch
 from .functions import string
 from .items import TokenI, TokenG
 

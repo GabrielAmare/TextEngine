@@ -7,9 +7,8 @@ import python_generator as pg
 
 from .generate import L0, L1, L2, L3, L4, L5, L6
 from .generic_items import GenericItem, GenericItemSet, optimized
-from .branches import BranchSet, Branch
 from .constants import ACTION, STATE, NT_STATE
-from .base import Group
+from .base import Group, BranchSet, Branch
 
 __all__ = ["Parser", "Engine"]
 
@@ -70,7 +69,7 @@ class PickAction(Dict[ACTION, BranchSet]):
 
     def l0s(self, func: FUNC, throw_errors: bool) -> Iterator[L0]:
         for action, branch_set in self.items():
-            if branch_set.terminal:
+            if branch_set.is_terminal:
                 for value in branch_set.terminal_code(throw_errors):
                     yield L0(action=action, value=value)
             else:
@@ -158,7 +157,7 @@ class Parser:
 
     def include(self, gtatbs: PickGroup) -> None:
         for branch_set in gtatbs.branch_sets:
-            if branch_set.terminal:
+            if branch_set.is_terminal:
                 continue
 
             if branch_set in self.branch_sets:

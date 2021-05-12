@@ -4,8 +4,7 @@ from typing import List, Callable, Optional, Dict
 from graph37 import Node
 from tools37 import CsvFile
 
-from .base import Group
-from .branches import BranchSet
+from .base import Group, BranchSet
 from .constants import ACTION, STATE, NT_STATE, T_STATE
 from .BuilderGraph import BuilderGraph
 
