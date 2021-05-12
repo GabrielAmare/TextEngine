@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Tuple, Iterator, FrozenSet
 
 from .constants import T_STATE, EXCLUDE
@@ -25,13 +25,8 @@ class Branch(__Item__):
     def as_group(self) -> BranchSet:
         return BranchSet(frozenset({self}))
 
-    def new_rule(self, rule: Rule):
-        return Branch(
-            name=self.name,
-            rule=rule,
-            priority=self.priority,
-            transfer=self.transfer
-        )
+    def new_rule(self, rule: Rule) -> Branch:
+        return replace(self, rule=rule)
 
     @property
     def splited(self) -> Iterator[Tuple[Match, Rule]]:
