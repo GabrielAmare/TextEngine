@@ -240,7 +240,7 @@ class Any(RuleList):
 
 @dataclass(frozen=True, order=True)
 class Match(Rule):
-    """When an item is validated by the ``validator``, the action will be done"""
+    """When an item is validated by the ``group``, the action will be done"""
     group: Group
     action: ACTION = ""
 
