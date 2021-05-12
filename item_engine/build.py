@@ -9,7 +9,7 @@ from .generate import L0, L1, L2, L3, L4, L5, L6
 from .generic_items import GenericItem, GenericItemSet, optimized
 from .branches import BranchSet, Branch
 from .constants import ACTION, STATE, NT_STATE
-from .items import Group
+from .base import Group
 
 __all__ = ["Parser", "Engine"]
 

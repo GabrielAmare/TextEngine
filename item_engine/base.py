@@ -1,11 +1,12 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Tuple, Iterator, FrozenSet, List
+from typing import Tuple, Iterator, FrozenSet, List, TypeVar, Generic, Type
 from functools import reduce
 from operator import and_
 
-from .items import Item, Group
-from .constants import EXCLUDE, ACTION
+from .constants import ACTION, INCLUDE, EXCLUDE, AS, IN
+from .generic_items import GenericItem, GenericItemSet
+import python_generator as pg
 
 INF = -1
 
@@ -242,3 +243,62 @@ class Match(Rule):
     """When an item is validated by the ``validator``, the action will be done"""
     group: Group
     action: ACTION = ""
+
+
+__all__ += ["Item", "Group"]
+
+
+class ItemInterface:
+    def match(self, action: ACTION) -> Match:
+        if isinstance(self, Item):
+            return Match(self.as_group, action)
+        elif isinstance(self, Group):
+            return Match(self, action)
+        else:
+            raise ValueError(self)
+
+    def include(self) -> Match:
+        return self.match(INCLUDE)
+
+    def exclude(self) -> Match:
+        return self.match(EXCLUDE)
+
+    def include_as(self, key: str) -> Match:
+        return self.match(AS.format(key))
+
+    def include_in(self, key: str) -> Match:
+        return self.match(IN.format(key))
+
+    inc = include
+    exc = exclude
+    as_ = include_as
+    in_ = include_in
+
+
+@dataclass(frozen=True, order=True)
+class Item(GenericItem, ItemInterface):
+    @property
+    def as_group(self) -> Group:
+        raise NotImplementedError
+
+
+E = TypeVar("E", bound=Item)
+
+
+class Group(GenericItemSet[E], Generic[E], ItemInterface):
+    @property
+    def code_factory(self) -> Type[pg.CONDITION]:
+        if len(self.items) == 1:
+            if self.inverted:
+                return pg.NE
+            else:
+                return pg.EQ
+        else:
+            if self.inverted:
+                return pg.NOT_IN
+            else:
+                return pg.IN
+
+    @property
+    def condition(self) -> pg.CONDITION:
+        raise NotImplementedError

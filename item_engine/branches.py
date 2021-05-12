@@ -3,8 +3,7 @@ from dataclasses import dataclass, replace
 from typing import Tuple, Iterator, FrozenSet
 
 from .constants import T_STATE, EXCLUDE, ACTION
-from .items import Item, Group
-from .rules import Rule, Match, Empty
+from .base import Rule, Match, Empty, Item, Group
 from .generic_items import GenericItem, GenericItemSet
 
 __all__ = ("Branch", "BranchSet")

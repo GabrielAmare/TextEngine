@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from typing import List, Callable, Optional, Dict
 
+from graph37 import Node
 from tools37 import CsvFile
 
-from .items import *
-from .branches import *
-from .constants import *
+from .base import Group
+from .branches import BranchSet
+from .constants import ACTION, STATE, NT_STATE, T_STATE
 from .BuilderGraph import BuilderGraph
-from graph37 import Node
 
 import python_generator as pg
 
