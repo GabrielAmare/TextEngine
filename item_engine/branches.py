@@ -37,7 +37,7 @@ class Branch(GenericItem):
             yield Match(group=Group.always(), action=EXCLUDE), Empty(valid=True)
 
     @property
-    def alphabet(self):
+    def alphabet(self) -> FrozenSet[Item]:
         return self.rule.alphabet
 
     @property
