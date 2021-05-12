@@ -5,7 +5,7 @@ from functools import reduce
 from operator import and_
 
 from .items import Item, Group
-from .constants import EXCLUDE
+from .constants import EXCLUDE, ACTION
 
 INF = -1
 
@@ -16,6 +16,113 @@ __all__ = [
     "Optional", "Repeat", "All", "Any",
     "Match",
 ]
+
+
+def alphabet(self: Rule) -> FrozenSet[Item]:
+    """
+        Return a frozenset containing all the explicit items of a given rule
+        It is possible that an item matches a rule without being in it's alphabet,
+        this case occurs when the rule contains at some level a Match which has an inverted Group.
+    """
+    if isinstance(self, Empty):
+        return frozenset()
+    elif isinstance(self, RuleUnit):
+        return alphabet(self.rule)
+    elif isinstance(self, RuleList):
+        return frozenset({item for rule in self.rules for item in alphabet(rule)})
+    elif isinstance(self, Match):
+        return self.group.items
+    else:
+        raise ValueError(self)
+
+
+def is_valid(self: Rule) -> bool:
+    """Return True when a Rule is valid"""
+    if isinstance(self, Empty):
+        return self.valid
+    elif isinstance(self, All):
+        return len(self.rules) == 1 and is_valid(self.rules[0])
+    elif isinstance(self, Any):
+        return all(map(is_valid, self.rules))
+    else:
+        return False
+
+
+def is_error(self: Rule) -> bool:
+    """Return True when a Rule is error"""
+    if isinstance(self, Empty):
+        return not self.valid
+    elif isinstance(self, All):
+        return len(self.rules) == 1 and is_error(self.rules[0])
+    elif isinstance(self, Any):
+        return all(map(is_error, self.rules))
+    else:
+        return False
+
+
+def is_terminal(self: Rule) -> bool:
+    """Return True when a Rule is terminal"""
+    if isinstance(self, Empty):
+        return True
+    elif isinstance(self, All):
+        return len(self.rules) == 1 and is_terminal(self.rules[0])
+    elif isinstance(self, Any):
+        return all(map(is_terminal, self.rules))
+    else:
+        return False
+
+
+def is_skipable(self: Rule) -> bool:
+    """Return True when a Rule is skipable"""
+    if isinstance(self, (Optional, Repeat)):
+        return True
+    elif isinstance(self, All):
+        return all(map(is_skipable, self.rules))
+    elif isinstance(self, Any):
+        return any(map(is_skipable, self.rules))
+    else:
+        return False
+
+
+def decompose_all(self: All) -> Iterator[Tuple[Rule, Rule]]:
+    for index, rule in enumerate(self.rules):
+        if index + 1 < len(self.rules):
+            yield rule, reduce(and_, self.rules[1:])
+        else:
+            yield rule, Empty(valid=True)
+
+        if not rule.skipable:
+            break
+
+
+def splited(self: Rule) -> Iterator[Tuple[Match, Rule]]:
+    """
+        Split the rules by returning a Match followed by the remaining Rule after the Match
+    """
+    if isinstance(self, Empty):
+        if is_valid(self):
+            yield Match(group=Group.always(), action=EXCLUDE), self
+        else:
+            yield Match(group=Group.never(), action=EXCLUDE), self
+    elif isinstance(self, Optional):
+        for first, after in splited(self.rule):
+            yield first, after
+    elif isinstance(self, Repeat):
+        for first, after in splited(self.rule):
+            yield first, after & self
+    elif isinstance(self, All):
+        for rule_first, rule_after in decompose_all(self):
+            for first, after in splited(rule_first):
+                yield first, after & rule_after
+    elif isinstance(self, Any):
+        for rule in self.rules:
+            for first, after in splited(rule):
+                yield first, after
+    elif isinstance(self, Match):
+        yield self, Empty(valid=True)
+        yield Match(~self.group, EXCLUDE), Empty(valid=False)
+    else:
+        raise ValueError(self)
 
 
 ########################################################################################################################
@@ -50,20 +157,12 @@ class Rule:
     def any(self) -> List[Rule]:
         return list(self.rules) if isinstance(self, Any) else [self]
 
-    @property
-    def is_valid(self) -> bool:
-        return False
-
-    @property
-    def is_error(self) -> bool:
-        return False
-
     def __and__(self, other: Rule) -> Rule:
-        if self.is_error or other.is_valid:
-            return self
+        if isinstance(self, Empty):
+            return other if self.valid else self
 
-        if self.is_valid or other.is_error:
-            return other
+        if isinstance(other, Empty):
+            return self if other.valid else other
 
         return All(tuple(self.all + other.all))
 
@@ -76,21 +175,12 @@ class Rule:
 
         return Any(tuple(self.any + other.any))
 
-    @property
-    def alphabet(self) -> FrozenSet[Item]:
-        raise NotImplementedError
-
-    @property
-    def terminal(self) -> bool:
-        raise NotImplementedError
-
-    @property
-    def skipable(self) -> bool:
-        raise NotImplementedError
-
-    @property
-    def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        raise NotImplementedError
+    is_valid = property(is_valid)
+    is_error = property(is_error)
+    alphabet = property(alphabet)
+    terminal = is_terminal = property(is_terminal)
+    skipable = is_skipable = property(is_skipable)
+    splited = property(splited)
 
 
 ########################################################################################################################
@@ -101,53 +191,10 @@ class Rule:
 class Empty(Rule):
     valid: bool
 
-    @property
-    def is_valid(self) -> bool:
-        return self.valid
-
-    @property
-    def is_error(self) -> bool:
-        return not self.valid
-
-    @property
-    def alphabet(self) -> FrozenSet[Item]:
-        return frozenset()
-
-    @property
-    def terminal(self) -> bool:
-        return True
-
-    @property
-    def skipable(self) -> bool:
-        return False
-
-    @property
-    def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        if self.valid:
-            yield Match(group=Group.always(), action=EXCLUDE), self
-        else:
-            yield Match(group=Group.never(), action=EXCLUDE), self
-
 
 @dataclass(frozen=True, order=True)
 class RuleUnit(Rule):
     rule: Rule
-
-    @property
-    def alphabet(self) -> FrozenSet[Item]:
-        return self.rule.alphabet
-
-    @property
-    def terminal(self) -> bool:
-        raise NotImplementedError
-
-    @property
-    def skipable(self) -> bool:
-        raise NotImplementedError
-
-    @property
-    def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        raise NotImplementedError
 
 
 @dataclass(frozen=True, order=True)
@@ -160,22 +207,6 @@ class RuleList(Rule):
     def __len__(self) -> int:
         return len(self.rules)
 
-    @property
-    def alphabet(self) -> FrozenSet[Item]:
-        return frozenset({item for rule in self.rules for item in rule.alphabet})
-
-    @property
-    def terminal(self) -> bool:
-        raise NotImplementedError
-
-    @property
-    def skipable(self) -> bool:
-        raise NotImplementedError
-
-    @property
-    def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        raise NotImplementedError
-
 
 ########################################################################################################################
 # Optional | Repeat | All | Any
@@ -183,95 +214,22 @@ class RuleList(Rule):
 
 @dataclass(frozen=True, order=True)
 class Optional(RuleUnit):
-    @property
-    def terminal(self) -> bool:
-        return False
-
-    @property
-    def skipable(self) -> bool:
-        return True
-
-    @property
-    def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        for first, after in self.rule.splited:
-            yield first, after
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class Repeat(RuleUnit):
-    @property
-    def terminal(self) -> bool:
-        return False
-
-    @property
-    def skipable(self) -> bool:
-        return True
-
-    @property
-    def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        for first, after in self.rule.splited:
-            yield first, after & self
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class All(RuleList):
-    @property
-    def decomposed(self) -> Iterator[Tuple[Rule, Rule]]:
-        for index, rule in enumerate(self.rules):
-            if index + 1 < len(self.rules):
-                yield rule, reduce(and_, self.rules[1:])
-            else:
-                yield rule, Empty(valid=True)
-
-            if not rule.skipable:
-                break
-
-    @property
-    def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        for rule_first, rule_after in self.decomposed:
-            for first, after in rule_first.splited:
-                yield first, after & rule_after
-
-    @property
-    def skipable(self) -> bool:
-        return all(rule.skipable for rule in self.rules)
-
-    @property
-    def terminal(self) -> bool:
-        return len(self.rules) == 1 and self.rules[0].terminal
-
-    @property
-    def is_valid(self) -> bool:
-        return len(self.rules) == 1 and self.rules[0].is_valid
-
-    @property
-    def is_error(self) -> bool:
-        return len(self.rules) == 1 and self.rules[0].is_error
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class Any(RuleList):
-    @property
-    def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        for rule in self.rules:
-            for first, after in rule.splited:
-                yield first, after
-
-    @property
-    def skipable(self) -> bool:
-        return any(rule.skipable for rule in self.rules)
-
-    @property
-    def terminal(self) -> bool:
-        return all(rule.terminal for rule in self.rules)
-
-    @property
-    def is_valid(self) -> bool:
-        return all(rule.is_valid for rule in self.rules)
-
-    @property
-    def is_error(self) -> bool:
-        return all(rule.is_error for rule in self.rules)
+    pass
 
 
 ########################################################################################################################
@@ -282,23 +240,5 @@ class Any(RuleList):
 @dataclass(frozen=True, order=True)
 class Match(Rule):
     """When an item is validated by the ``validator``, the action will be done"""
-
     group: Group
-    action: str = ""
-
-    @property
-    def splited(self) -> Iterator[Tuple[Match, Rule]]:
-        yield self, Empty(valid=True)
-        yield Match(~self.group, EXCLUDE), Empty(valid=False)
-
-    @property
-    def alphabet(self) -> FrozenSet[Item]:
-        return self.group.alphabet
-
-    @property
-    def skipable(self) -> bool:
-        return False
-
-    @property
-    def terminal(self) -> bool:
-        return False
+    action: ACTION = ""
