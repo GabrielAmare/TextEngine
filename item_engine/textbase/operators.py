@@ -67,7 +67,7 @@ class OP:
                 self.matches.append(Match(child.tokenG, INCLUDE))
                 self.as_str += str(child).replace('{', '{{').replace('}', '}}')
             elif isinstance(child, Group):
-                self.matches.append(child.as_(AS.format(f"c{self.n}")))
+                self.matches.append(child.as_(f"c{self.n}"))
                 self.args.append(f"build(e.data['c{self.n}'])")
                 self.as_str += f"{{self.c{self.n}!s}}"
                 self.n += 1
