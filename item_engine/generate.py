@@ -150,15 +150,15 @@ class L6:
                         target=l0.value
                     ))
 
-            group = Group.always()
-            if l4.always.cases:
-                for l0 in l4.always.cases:
-                    data.append(dict(
-                        origin=str(l4.value),
-                        group=str(group).replace('\n', ''),
-                        action=l0.action,
-                        target=l0.value
-                    ))
+            # group = Group.always()
+            # if l4.always.cases:
+            #     for l0 in l4.always.cases:
+            #         data.append(dict(
+            #             origin=str(l4.value),
+            #             group=str(group).replace('\n', ''),
+            #             action=l0.action,
+            #             target=l0.value
+            #         ))
 
         CsvFile.save(fp, keys=["origin", "group", "action", "target"], data=data)
 

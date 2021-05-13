@@ -92,12 +92,20 @@ engine = Engine(
         Parser(
             name='lexer',
             branch_set=lexer,
+            input_cls=Char,
+            output_cls=Token,
+            skips=["WHITESPACE"],
+            reflexive=False,
             formal=True,
         ),
         Parser(
             name='parser',
             branch_set=parser,
+            input_cls=Token,
+            output_cls=Lemma,
+            skips=[],
             reflexive=True,
+            formal=False,
         )
     ],
     operators=operators
@@ -105,7 +113,7 @@ engine = Engine(
 
 for parser in engine.parsers:
     parser.l6.graph.display()
-    # parser.l6.to_csv(parser.name)
+    parser.l6.to_csv(parser.name)
 
 engine.build(
     allow_overwrite=True
@@ -115,17 +123,17 @@ from examples.item_engine.example_1.maths import gen_networks
 
 lexer, parser = gen_networks(
     lexer_cfg=dict(
-        input_cls=Char,
-        output_cls=Token,
-        to_ignore=["WHITESPACE"],
+        input_cls=engine.parsers[0].input_cls,
+        output_cls=engine.parsers[0].output_cls,
+        to_ignore=engine.parsers[0].skips,
         allow_gaps=True,
         save_terminals=True,
         remove_previous=False
     ),
     parser_cfg=dict(
-        input_cls=Token,
-        output_cls=Lemma,
-        to_ignore=[],
+        input_cls=engine.parsers[1].input_cls,
+        output_cls=engine.parsers[1].output_cls,
+        to_ignore=engine.parsers[1].skips,
         allow_gaps=True
     )
 )
@@ -205,13 +213,25 @@ for final in parser.terminals:
 
 print(mn, mx)
 
-# SHOW LENGTH OF THE GENERATED FILES
-from tools37 import TextFile
+import os
 
-TextFile.extension = ".py"
-for fp in ["maths/__init__.py", "maths/lexer.py", "maths/parser.py", "maths/materials.py"]:
-    length = len(TextFile.load(fp).split('\n'))
-    print(f"{fp!r} : {length} lines")
+
+def resume_package(package_path: str):
+    """This function will print a resume of the specified package"""
+    assert os.path.exists(package_path)
+
+    for filename in os.listdir(package_path):
+        filepath = os.path.join(package_path, filename).replace('\\', '/')
+        try:
+            with open(filepath, mode="r", encoding="utf-8") as file:
+                length = len(file.read().split('\n'))
+                print(f"{filepath!r} : {length!r} lines")
+        except PermissionError:
+            pass
+
+
+# SHOW LENGTH OF THE GENERATED FILES
+resume_package("maths")
 
 texts = [
     "∀ x ∈ X, ∃ y ∈ Y | x + y == 5 and x * y == 6",

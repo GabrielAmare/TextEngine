@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Dict, List, Callable, Iterator, Tuple, Optional
+from typing import Dict, List, Callable, Iterator, Tuple, Optional, Type
 import python_generator as pg
 
 from .generate import L0, L1, L2, L3, L4, L5, L6
 from .generic_items import GenericItem, GenericItemSet, optimized
-from .constants import ACTION, STATE, NT_STATE
-from .base import Group, BranchSet, Branch
+from .constants import ACTION, STATE, NT_STATE, T_STATE
+from .base import Group, BranchSet, Branch, Element
 
 __all__ = ["Parser", "Engine"]
 
@@ -135,18 +135,40 @@ class Parser:
     def __init__(self,
                  name: str,
                  branch_set: BranchSet,
-                 reflexive: bool = False,
-                 formal: bool = False
+                 input_cls: Type[Element],
+                 output_cls: Type[Element],
+                 skips: List[T_STATE],
+                 reflexive: bool,
+                 formal: bool,
                  ):
+        """
+
+        :param name: The name of the parser, it will be used to name the module
+        :param branch_set: The BranchSet including all the patterns defined in the parser grammar
+        :param input_cls: The type of elements the parser will receive
+        :param output_cls: The type of elements the parser will emit
+        :param skips: The list of element types that must be ignored (commonly used for white space patterns)
+        :param reflexive: Will the parser receive what it emits (used to build recursive grammar)
+        :param formal: Is the parser formal ? If it's the case, any ambiguity will raise a SyntaxError
+        """
         self.name: str = name
-        self.branch_sets: List[BranchSet] = [branch_set]
+        self.branch_set: BranchSet = branch_set
+        self.input_cls: Type[Element] = input_cls
+        self.output_cls: Type[Element] = output_cls
         self.pbs: PickBranchSet = PickBranchSet()
         self.reflexive: bool = reflexive
         self.formal: bool = formal
+        self.skips: List[T_STATE] = skips
+
+        self.branch_sets: List[BranchSet] = [self.branch_set]
 
         self.build()
 
     def build(self) -> None:
+        """
+            This will iteratively build the cases of the parser
+            from the original branchset to all the possible consequent branchsets
+        """
         index = 0
         while index < len(self.branch_sets):
             branch_set: BranchSet = self.branch_sets[index]
