@@ -327,7 +327,7 @@ __all__ += ["Branch", "BranchSet"]
 
 
 ########################################################################################################################
-# Branch
+# Branch & BranchSet
 ########################################################################################################################
 
 @dataclass(frozen=True, order=True)
@@ -391,6 +391,42 @@ class BranchSet(GenericItemSet[Branch], HasAlphabet, HasState):
 __all__ += ["Element", "OPTIONS"]
 
 
+########################################################################################################################
+# Element
+########################################################################################################################
+
+@dataclass(frozen=True, order=True)
+class HasSpan:
+    start: INDEX
+    end: INDEX
+
+    def lt(self, other: Element) -> bool:
+        return self.end < other.start
+
+    def le(self, other: Element) -> bool:
+        return self.end <= other.start
+
+    def gt(self, other: Element) -> bool:
+        return self.end > other.start
+
+    def ge(self, other: Element) -> bool:
+        return self.end >= other.start
+
+    def eq(self, other: Element) -> bool:
+        return self.start == other.start and self.end == other.end
+
+    def ne(self, other: Element) -> bool:
+        return self.start != other.start or self.end != other.end
+
+    def ol(self, other: Element) -> bool:
+        if other.start < self.end:
+            return other.end > self.start
+        elif other.start > self.end:
+            return other.end < self.start
+        else:
+            return False
+
+
 @dataclass(frozen=True, order=True)
 class Element(HasState):
     start: INDEX
@@ -418,32 +454,6 @@ class Element(HasState):
     @property
     def is_eof(self):
         return self.value == "EOF"
-
-    def lt(self, other: Element) -> bool:
-        return self.end < other.start
-
-    def le(self, other: Element) -> bool:
-        return self.end <= other.start
-
-    def gt(self, other: Element) -> bool:
-        return self.end > other.start
-
-    def ge(self, other: Element) -> bool:
-        return self.end >= other.start
-
-    def eq(self, other: Element) -> bool:
-        return self.start == other.start and self.end == other.end
-
-    def ne(self, other: Element) -> bool:
-        return self.start != other.start or self.end != other.end
-
-    def ol(self, other: Element) -> bool:
-        if other.start < self.end:
-            return other.end > self.start
-        elif other.start > self.end:
-            return other.end < self.start
-        else:
-            return False
 
 
 class OPTIONS:
