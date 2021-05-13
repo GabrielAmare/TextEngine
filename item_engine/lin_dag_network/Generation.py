@@ -9,8 +9,8 @@ __all__ = ["Generation"]
 
 class Generation(Generic[E]):
     def __init__(self, start: INDEX, end: INDEX):
-        self.start: INDEX = start
-        self.end: INDEX = end
+        self.at: INDEX = start
+        self.to: INDEX = end
 
         self.non_terminals: List[E] = []
         self.terminals_start: List[E] = []
@@ -26,15 +26,15 @@ class Generation(Generic[E]):
 
     def append(self, output: E):
         if output.terminal:
-            if output.end == self.end:
+            if output.end == self.to:
                 self.terminals_end.append(output)
-            elif output.end == self.start:
+            elif output.end == self.at:
                 self.terminals_start.append(output)
             else:
                 assert False
-        elif output.end == self.end:
+        elif output.end == self.to:
             self.non_terminals.append(output)
-        elif output.end == self.start:
+        elif output.end == self.at:
             pass
         else:
             raise Exception

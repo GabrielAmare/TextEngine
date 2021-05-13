@@ -13,12 +13,8 @@ class HashableDict(dict):
 @dataclass(frozen=True, order=True)
 class Char(Element):
     @classmethod
-    def make(cls, index: INDEX, char: str):
-        return Char(
-            value=T_STATE(char),
-            start=index,
-            end=index + 1
-        )
+    def make(cls, at: INDEX, char: str):
+        return Char(at=at, to=at + 1, value=T_STATE(char))
 
     def develop(self, action: ACTION, value: STATE, item):
         raise Exception
@@ -33,19 +29,9 @@ class Token(Element):
 
     def develop(self, action: ACTION, value: STATE, item: Char):
         if action == INCLUDE:
-            return self.__class__(
-                start=self.start,
-                end=item.end,
-                value=value,
-                content=self.content + str(item.value)
-            )
+            return self.__class__(at=self.at, to=item.to, value=value, content=self.content + str(item.value))
         elif action == EXCLUDE:
-            return self.__class__(
-                start=self.start,
-                end=self.end,
-                value=value,
-                content=self.content
-            )
+            return self.__class__(at=self.at, to=self.to, value=value, content=self.content)
         else:
             raise ValueError(action)
 
@@ -57,19 +43,9 @@ class Lemma(Element):
     def develop(self, action: ACTION, value: STATE, item: Token):
         data = HashableDict(self.data)
         if action == INCLUDE:
-            return self.__class__(
-                start=self.start,
-                end=item.end,
-                value=value,
-                data=data
-            )
+            return self.__class__(at=self.at, to=item.to, value=value, data=data)
         elif action == EXCLUDE:
-            return self.__class__(
-                start=self.start,
-                end=self.end,
-                value=value,
-                data=data
-            )
+            return self.__class__(at=self.at, to=self.to, value=value, data=data)
         elif ":" in action:
             action, name = action.split(":", 1)
             if action == "as":
@@ -79,11 +55,6 @@ class Lemma(Element):
                 data[name].append(item)
             else:
                 raise ValueError(name)
-            return self.__class__(
-                start=self.start,
-                end=item.end,
-                value=value,
-                data=data
-            )
+            return self.__class__(at=self.at, to=item.to, value=value, data=data)
         else:
             raise ValueError(action)

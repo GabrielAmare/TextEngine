@@ -77,8 +77,8 @@ class Network(Generic[INPUT, OUTPUT]):
     def add_bridges(self, outputs: SetList[OUTPUT]) -> None:
         """Use the ``outputs`` to make bridges"""
         for o in outputs:
-            a: POSITION = self.pr.get(o.start)
-            b: POSITION = self.pr.get(o.end)
+            a: POSITION = self.pr.get(o.at)
+            b: POSITION = self.pr.get(o.to)
             self.merge_positions(a, b)
 
     def confirm_terminals(self, terminals: SetList[OUTPUT]) -> OUTPUT_LAYER:
@@ -89,7 +89,7 @@ class Network(Generic[INPUT, OUTPUT]):
             if any(r.value == t.value for r in result):
                 continue
 
-            if any(r.start < t.start for r in terminals if r.end == t.end):
+            if any(r.at < t.at for r in terminals if r.to == t.to):
                 continue
 
             result.append(t)
@@ -100,12 +100,12 @@ class Network(Generic[INPUT, OUTPUT]):
         return result
 
     def add_terminal(self, o: OUTPUT) -> None:
-        self.terminal_ends.add(self.pr.get(o.end))
+        self.terminal_ends.add(self.pr.get(o.to))
         if self.save_terminals:
             self.terminals.append(o)
 
     def add_non_terminal(self, o: OUTPUT) -> None:
-        p = self.pr.get(o.end)
+        p = self.pr.get(o.to)
         self.non_terminal_ends.setdefault(p, [])
         self.non_terminal_ends[p].append(o)
 
@@ -116,27 +116,27 @@ class Network(Generic[INPUT, OUTPUT]):
 
     def elements_before(self, i: INPUT) -> OUTPUT_LAYER:
         """Yields the non-terminal elements that ends where ``i`` starts"""
-        p = self.pr.get(i.start)
+        p = self.pr.get(i.at)
         return self.non_terminal_ends.get(p, [])
 
     def new_cursor(self, index: INDEX) -> None:
         """Create a new empty non-terminal element at ``index``"""
         p = self.pr.get(index)
-        o = self.output_cls(start=index, end=index, value=0)
+        o = self.output_cls(at=index, to=index, value=0)
         self.non_terminal_ends.setdefault(p, [])
         self.non_terminal_ends[p].append(o)
 
     def can_continue_from(self, i: INPUT) -> bool:
         """Return True if any non-terminal element ends where ``i`` starts"""
-        return self.pr.get(i.start) in self.non_terminal_ends
+        return self.pr.get(i.at) in self.non_terminal_ends
 
     def can_start_with(self, i: INPUT) -> bool:
         """Return True if any terminal element ends where ``i`` starts"""
-        return i.start == 0 or self.pr.get(i.start) in self.terminal_ends
+        return i.at == 0 or self.pr.get(i.at) in self.terminal_ends
 
     def remove_before(self, i: INPUT) -> None:
         if self.remove_previous:
-            p = self.pr.get(i.start)
+            p = self.pr.get(i.at)
             for r in [p_ for p_ in self.non_terminal_ends.keys() if p_ < p]:
                 del self.non_terminal_ends[r]
 
@@ -171,8 +171,8 @@ class Network(Generic[INPUT, OUTPUT]):
         return ReprTable.from_items(
             items=self.terminals,
             config={
-                "start": lambda o: str(self.pr.get(o.start)),
-                "end": lambda o: str(self.pr.get(o.end)),
+                "at": lambda o: str(self.pr.get(o.at)),
+                "to": lambda o: str(self.pr.get(o.to)),
                 "value": lambda o: str(o.value),
                 **config
             }
@@ -190,8 +190,8 @@ class Network(Generic[INPUT, OUTPUT]):
         return ReprTable.from_items(
             items=self.non_terminals,
             config={
-                "start": lambda o: str(self.pr.get(o.start)),
-                "end": lambda o: str(self.pr.get(o.end)),
+                "at": lambda o: str(self.pr.get(o.at)),
+                "to": lambda o: str(self.pr.get(o.to)),
                 "value": lambda o: str(o.value),
                 **config
             }
@@ -200,11 +200,11 @@ class Network(Generic[INPUT, OUTPUT]):
     def __iter__(self) -> Generator[OUTPUT, None, None]:
         """Yields all the terminal elements that can be generated from the ``source``"""
         assert self.source is not None
-        end = 0
+        to = 0
         for input_element in self.source:
             yield from self.append(input_element)
-            end = input_element.end
-        yield from self.append(self.input_cls.EOF(end))
+            to = input_element.to
+        yield from self.append(self.input_cls.EOF(to))
 
     def on(self, i: INPUT) -> bool:
         """
@@ -212,7 +212,7 @@ class Network(Generic[INPUT, OUTPUT]):
             If any non-terminal element ends where i starts, it return True
         """
         if self.can_start_with(i) or self.allow_gaps:
-            self.new_cursor(i.start)
+            self.new_cursor(i.at)
             return True
         else:
             return self.can_continue_from(i)

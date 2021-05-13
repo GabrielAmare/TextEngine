@@ -161,8 +161,8 @@ def parse_text(text: str):
     mn, mx = min(positions), max(positions)
 
     for final in parser.terminals:
-        if parser.pr.get(final.start) == mn:
-            if parser.pr.get(final.end) == mx:
+        if parser.pr.get(final.at) == mn:
+            if parser.pr.get(final.to) == mx:
                 yield build(final)
 
 
@@ -195,8 +195,8 @@ positions = parser.pr.positions
 mn, mx = min(positions), max(positions)
 
 for final in parser.terminals:
-    if parser.pr.get(final.start) == mn:
-        if parser.pr.get(final.end) == mx:
+    if parser.pr.get(final.at) == mn:
+        if parser.pr.get(final.to) == mx:
             print()
             print(build(final))
             print()

@@ -34,27 +34,27 @@ class Instance(Generic[E, F]):
         self.outputs.extend(self.i_generate(inputs))
         return self.outputs
 
-    def new_at(self, index: INDEX) -> F:
-        return self.model.output_cls(start=index, end=index, value=0)
+    def new_at(self, at: INDEX) -> F:
+        return self.model.output_cls(at=at, to=at, value=0)
 
     def generate_output(self, current: F, input_: E) -> Generator[F, None, None]:
         for action, value in self.model.function(current, input_):
             output: F = current.develop(action, value, input_)
-            assert output.end in {input_.start, input_.end}  # for debug purpose
+            assert output.to in {input_.at, input_.to}  # for debug purpose
             yield output
 
     def generate_layer(self, input_: E) -> List[F]:
-        generation: Generation[F] = Generation(input_.start, input_.end)
+        generation: Generation[F] = Generation(input_.at, input_.to)
 
         for current in self.currents:
             generation.extend(self.generate_output(current, input_))
 
         if generation.terminals_start:
-            current = self.new_at(input_.start)
+            current = self.new_at(input_.at)
             generation.extend(self.generate_output(current, input_))
 
         if generation.terminals_end:
-            current = self.new_at(input_.end)
+            current = self.new_at(input_.to)
             generation.append(current)
 
         terminals: List[F] = []
@@ -66,7 +66,7 @@ class Instance(Generic[E, F]):
                     terminals.append(output)
 
         self.currents = generation.non_terminals
-        self.current_end = generation.end
+        self.current_end = generation.to
 
         return terminals
 
@@ -74,17 +74,17 @@ class Instance(Generic[E, F]):
         """
             The outputed elements are naturally sorted by increasing end indexes
 
-            # to verify : for elements with same end index, they come out sorted by increasing start
+            # to verify : for elements with same end index, they come out sorted by increasing at
         """
         for input_ in inputs:
             if not self.currents:
                 if self.model.allow_gaps:
-                    self.currents.append(self.new_at(input_.start))
+                    self.currents.append(self.new_at(input_.at))
                 else:
                     raise SyntaxError(input_)
 
             assert input_.terminal, "Network inputs must be terminal elements"  # for debug purpose
-            assert input_.start == self.current_end
+            assert input_.at == self.current_end
             yield from self.generate_layer(input_)
 
         if self.currents:

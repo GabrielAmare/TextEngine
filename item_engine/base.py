@@ -397,59 +397,53 @@ __all__ += ["Element", "OPTIONS"]
 
 @dataclass(frozen=True, order=True)
 class HasSpan:
-    start: INDEX
-    end: INDEX
+    at: INDEX
+    to: INDEX
 
-    def lt(self, other: Element) -> bool:
-        return self.end < other.start
+    @property
+    def span(self) -> Tuple[INDEX, INDEX]:
+        return self.at, self.to
 
-    def le(self, other: Element) -> bool:
-        return self.end <= other.start
+    def lt(self, other: HasSpan) -> bool:
+        return self.to < other.at
 
-    def gt(self, other: Element) -> bool:
-        return self.end > other.start
+    def le(self, other: HasSpan) -> bool:
+        return self.to <= other.at
 
-    def ge(self, other: Element) -> bool:
-        return self.end >= other.start
+    def gt(self, other: HasSpan) -> bool:
+        return self.to > other.at
 
-    def eq(self, other: Element) -> bool:
-        return self.start == other.start and self.end == other.end
+    def ge(self, other: HasSpan) -> bool:
+        return self.to >= other.at
 
-    def ne(self, other: Element) -> bool:
-        return self.start != other.start or self.end != other.end
+    def eq(self, other: HasSpan) -> bool:
+        return self.at == other.at and self.to == other.to
 
-    def ol(self, other: Element) -> bool:
-        if other.start < self.end:
-            return other.end > self.start
-        elif other.start > self.end:
-            return other.end < self.start
+    def ne(self, other: HasSpan) -> bool:
+        return self.at != other.at or self.to != other.to
+
+    def ol(self, other: HasSpan) -> bool:
+        if other.at < self.to:
+            return other.to > self.at
+        elif other.at > self.to:
+            return other.to < self.at
         else:
             return False
 
 
 @dataclass(frozen=True, order=True)
-class Element(HasState):
-    start: INDEX
-    end: INDEX
+class Element(HasState, HasSpan):
     value: STATE
 
     @classmethod
-    def EOF(cls, start: INDEX):
-        return cls(
-            start=start,
-            end=start,
-            value=T_STATE("EOF")
-        )
-
-    @property
-    def span(self) -> Tuple[INDEX, INDEX]:
-        return self.start, self.end
+    def EOF(cls, at: INDEX):
+        return cls(at=at, to=at, value=T_STATE("EOF"))
 
     def develop(self, action: ACTION, value: STATE, item: Element) -> Element:
         raise NotImplementedError
 
     def eof(self):
-        return self.__class__.EOF(self.end)
+        return self.__class__.EOF(self.to)
 
     @property
     def is_eof(self):
@@ -465,7 +459,7 @@ class OPTIONS:
     @staticmethod
     def consecutive(elements: List[Element]) -> bool:
         """Return True when elements are in order and conscutive, it implies that there's no overlapping"""
-        return all(a.end == b.start for a, b in zip(elements, elements[1:]))
+        return all(a.to == b.at for a, b in zip(elements, elements[1:]))
 
     @staticmethod
     def ordered_layers(layers: List[List[Element]]) -> bool:
@@ -474,11 +468,11 @@ class OPTIONS:
 
     @staticmethod
     def simultaneous_end(elements: List[Element]) -> bool:
-        return all(a.end == b.end for a in elements for b in elements)
+        return all(a.to == b.to for a in elements for b in elements)
 
     @staticmethod
     def simultaneous_start(elements: List[Element]) -> bool:
-        return all(a.start == b.start for a in elements for b in elements)
+        return all(a.at == b.at for a in elements for b in elements)
 
     @staticmethod
     def non_overlaping(elements: List[Element]):
