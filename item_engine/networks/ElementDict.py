@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Generic, TypeVar, List, Dict, Iterable
-from ..elements import Element
+from ..base import Element
 from ..constants import INDEX
 
 __all__ = ["ElementDict"]

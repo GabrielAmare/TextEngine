@@ -5,7 +5,7 @@ from tools37 import ReprTable
 from .Network import Network
 
 from ..constants import ACTION, NT_STATE, T_STATE, STATE, INDEX, POSITION
-from ..elements import Element
+from ..base import Element
 from ..utils import PositionRegister, SetList
 
 __all__ = ["ReflexiveNetwork"]
@@ -62,7 +62,7 @@ class ReflexiveNetwork(Generic[INPUT, OUTPUT]):
 
         for o in self.elements_before(i):
             for g in self.generate_from(o, i):
-                if not g.terminal:
+                if not g.is_terminal:
                     non_terminals.append(g)
                 elif g.value in self.to_ignore:
                     bridges.append(g)
@@ -178,7 +178,7 @@ class ReflexiveNetwork(Generic[INPUT, OUTPUT]):
         done: OUTPUT_LAYER = []
         while n < len(todo):
             i = todo[n]
-            assert i.terminal
+            assert i.is_terminal
 
             if self.on(i):
                 for o in self.gen(i):

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import *
 
 from ..constants import ACTION, STATE, NT_STATE, INDEX
-from ..elements import Element
+from ..base import Element
 from .ElementList import ElementList
 from .ElementDict import ElementDict
 

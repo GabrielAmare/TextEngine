@@ -1,5 +1,5 @@
 from typing import TypeVar, Generic, List, Iterable
-from ..elements import Element
+from ..base import Element
 
 __all__ = ["ElementList"]
 

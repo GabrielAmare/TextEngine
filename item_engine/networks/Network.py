@@ -3,7 +3,7 @@ from typing import Generic, List, Iterator, Optional, Generator, Type, Tuple, Ty
 from tools37 import ReprTable
 
 from ..constants import ACTION, NT_STATE, T_STATE, STATE, INDEX, POSITION
-from ..elements import Element
+from ..base import Element
 from ..utils import PositionRegister, SetList
 
 __all__ = ["Network"]
@@ -153,7 +153,7 @@ class Network(Generic[INPUT, OUTPUT]):
 
         for o in self.elements_before(i):
             for g in self.generate_from(o, i):
-                if not g.terminal:
+                if not g.is_terminal:
                     non_terminals.append(g)
                 elif g.value in self.to_ignore:
                     bridges.append(g)
@@ -221,7 +221,7 @@ class Network(Generic[INPUT, OUTPUT]):
         """
             Return all the terminal elements generated considering the input ``i``
         """
-        assert i.terminal
+        assert i.is_terminal
 
         if self.on(i):
             return self.gen(i)
