@@ -366,8 +366,17 @@ class BranchSet(GenericItemSet[Branch], HasAlphabet, HasState):
             for first, after in branch.splited:
                 yield first.group, first.action, branch.new_rule(after)
 
-    def append(self, other: Branch) -> BranchSet:
-        return self + other
+    @property
+    def only_non_terminals(self) -> BranchSet:
+        """Remove the terminal branches"""
+        return BranchSet(frozenset(branch for branch in self.items if not branch.is_terminal))
 
-    def extend(self, other: BranchSet) -> BranchSet:
-        return self | other
+    @property
+    def only_valids(self) -> BranchSet:
+        """Remove the terminal branches"""
+        return BranchSet(frozenset(branch for branch in self.items if branch.is_valid))
+
+    @property
+    def only_errors(self) -> BranchSet:
+        """Remove the terminal branches"""
+        return BranchSet(frozenset(branch for branch in self.items if branch.is_error))
