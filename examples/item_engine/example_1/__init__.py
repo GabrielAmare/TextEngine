@@ -111,7 +111,7 @@ engine.build(
     allow_overwrite=True
 )
 
-from examples.item_engine.maths import gen_networks
+from examples.item_engine.example_1.maths import gen_networks
 
 lexer, parser = gen_networks(
     lexer_cfg=dict(
@@ -130,7 +130,7 @@ lexer, parser = gen_networks(
     )
 )
 
-from examples.item_engine.maths.materials import *
+from examples.item_engine.example_1.maths.materials import *
 
 
 def parse_text(text: str):
