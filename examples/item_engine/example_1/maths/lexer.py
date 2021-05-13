@@ -64,17 +64,17 @@ def lexer(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
         elif item.value == '∉':
             yield '∈', 'NOTIN'
         else:
-            yield '∉', '!KW_NOT|KW_AND|KW_OR'
+            yield '∉', '!KW_NOT|KW_OR|KW_AND'
     elif value == 1:
         if item.value in '\t ':
-            yield '∈', 1
             yield '∉', 'WHITESPACE'
+            yield '∈', 1
         else:
             yield '∉', 'WHITESPACE'
     elif value == 2:
         if item.value == '\n':
-            yield '∈', 13
             yield '∉', 'NEWLINE'
+            yield '∈', 13
         else:
             yield '∉', 'NEWLINE'
     elif value == 3:
@@ -87,38 +87,38 @@ def lexer(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
             yield '∉', 'INT'
             yield '∈', 15
         elif item.value in '0123456789':
-            yield '∈', 4
             yield '∉', 'INT'
+            yield '∈', 4
         else:
             yield '∉', 'INT'
     elif value == 5:
         if item.value == '=':
-            yield '∈', 'LV_EQUAL'
             yield '∉', 'LV'
+            yield '∈', 'LV_EQUAL'
         else:
             yield '∉', 'LV'
     elif value == 6:
         if item.value == '=':
-            yield '∉', 'EQUAL'
             yield '∈', 'EQUAL_EQUAL'
+            yield '∉', 'EQUAL'
         else:
             yield '∉', 'EQUAL'
     elif value == 7:
         if item.value == '=':
-            yield '∉', 'RV'
             yield '∈', 'RV_EQUAL'
+            yield '∉', 'RV'
         else:
             yield '∉', 'RV'
     elif value == 8:
         if item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz':
-            yield '∈', 8
             yield '∉', 'VAR'
+            yield '∈', 8
         else:
             yield '∉', 'VAR'
     elif value == 9:
         if item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmopqrstuvwxyz':
-            yield '∈', 8
             yield '∉', 'VAR'
+            yield '∈', 8
         elif item.value == 'n':
             yield '∈', 16
             yield '∉', 'VAR'
@@ -135,8 +135,8 @@ def lexer(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
             yield '∉', 'VAR'
     elif value == 11:
         if item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqstuvwxyz':
-            yield '∈', 8
             yield '∉', 'VAR'
+            yield '∈', 8
         elif item.value == 'r':
             yield '∈', 18
             yield '∉', 'VAR'
@@ -150,8 +150,8 @@ def lexer(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
             yield '∉', 'INT_POW'
     elif value == 13:
         if item.value == '\n':
-            yield '∈', 13
             yield '∉', 'NEWLINE'
+            yield '∈', 13
         else:
             yield '∉', 'NEWLINE'
     elif value == 14:
@@ -167,8 +167,8 @@ def lexer(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
             yield '∉', '!FLOAT'
     elif value == 16:
         if item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcefghijklmnopqrstuvwxyz':
-            yield '∈', 8
             yield '∉', 'VAR'
+            yield '∈', 8
         elif item.value == 'd':
             yield '∈', 19
             yield '∉', 'VAR'
@@ -185,20 +185,20 @@ def lexer(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
             yield '∉', 'VAR'
     elif value == 18:
         if item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz':
-            yield '∈', 8
             yield '∉', 'KW_OR'
+            yield '∈', 8
         else:
             yield '∉', 'KW_OR'
     elif value == 19:
         if item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz':
-            yield '∈', 8
             yield '∉', 'KW_AND'
+            yield '∈', 8
         else:
             yield '∉', 'KW_AND'
     elif value == 20:
         if item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz':
-            yield '∈', 8
             yield '∉', 'KW_NOT'
+            yield '∈', 8
         else:
             yield '∉', 'KW_NOT'
     else:
