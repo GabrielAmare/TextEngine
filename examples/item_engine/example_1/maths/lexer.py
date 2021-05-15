@@ -65,7 +65,7 @@ def lexer(value: NT_STATE, item: Element) -> Iterator[Tuple[ACTION, STATE]]:
         elif item.value == '∉':
             yield '∈', 'NOTIN'
         else:
-            yield '∉', '!KW_AND|KW_OR|KW_NOT'
+            yield '∉', '!KW_AND|KW_NOT|KW_OR'
     elif value == 1:
         if item.value in '\t ':
             yield '∈', 1

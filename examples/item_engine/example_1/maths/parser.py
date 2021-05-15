@@ -44,7 +44,7 @@ def parser(value: NT_STATE, item: Element) -> Iterator[Tuple[ACTION, STATE]]:
         elif item.value == '__POW__':
             yield 'as:c0', 17
         else:
-            yield '∉', '!__ATTR__|__EQ__|__GE__|__EXISTS__|__MUL__|__POW__|__GT__|__EQUATIONS__|__LT__|__ENUMV__|__SUB__|__ADD__|__CONSTRAINT__|__NOT__|__OR__|__LE__|__PAR__|__SET__|__AND__|__NEG__|__DIV__|__FORALL__'
+            yield '∉', '!__ADD__|__AND__|__ATTR__|__CONSTRAINT__|__DIV__|__ENUMV__|__EQUATIONS__|__EQ__|__EXISTS__|__FORALL__|__GE__|__GT__|__LE__|__LT__|__MUL__|__NEG__|__NOT__|__OR__|__PAR__|__POW__|__SET__|__SUB__'
     elif value == 1:
         if item.value in ('INT', 'VAR', '__NEG__', '__PAR__', '__POW__'):
             yield 'as:c0', '__NEG__'
@@ -88,7 +88,7 @@ def parser(value: NT_STATE, item: Element) -> Iterator[Tuple[ACTION, STATE]]:
         elif item.value == 'VAR':
             yield 'as:c1', '__MUL__'
         else:
-            yield '∉', '!__OR__|__EQ__|__GE__|__LE__|__MUL__|__POW__|__GT__|__LT__|__AND__|__SUB__|__ADD__|__DIV__'
+            yield '∉', '!__ADD__|__AND__|__DIV__|__EQ__|__GE__|__GT__|__LE__|__LT__|__MUL__|__OR__|__POW__|__SUB__'
     elif value == 5:
         if item.value == 'COMMA':
             yield '∈', 32
@@ -139,7 +139,7 @@ def parser(value: NT_STATE, item: Element) -> Iterator[Tuple[ACTION, STATE]]:
         elif item.value == 'STAR':
             yield '∈', 31
         else:
-            yield '∉', '!__OR__|__ATTR__|__EQ__|__GE__|__LE__|__MUL__|__POW__|__GT__|__AND__|__LT__|__SUB__|__ADD__|__DIV__'
+            yield '∉', '!__ADD__|__AND__|__ATTR__|__DIV__|__EQ__|__GE__|__GT__|__LE__|__LT__|__MUL__|__OR__|__POW__|__SUB__'
     elif value == 10:
         if item.value == 'DASH':
             yield '∈', 20
@@ -160,14 +160,14 @@ def parser(value: NT_STATE, item: Element) -> Iterator[Tuple[ACTION, STATE]]:
         elif item.value == 'RV_EQUAL':
             yield '∈', 29
         else:
-            yield '∉', '!__OR__|__EQ__|__GE__|__LE__|__GT__|__AND__|__LT__|__SUB__|__ADD__'
+            yield '∉', '!__ADD__|__AND__|__EQ__|__GE__|__GT__|__LE__|__LT__|__OR__|__SUB__'
     elif value == 11:
         if item.value == 'KW_AND':
             yield '∈', 23
         elif item.value == 'KW_OR':
             yield '∈', 24
         else:
-            yield '∉', '!__OR__|__AND__'
+            yield '∉', '!__AND__|__OR__'
     elif value == 12:
         if item.value == 'NEWLINE':
             yield '∈', 36
@@ -197,7 +197,7 @@ def parser(value: NT_STATE, item: Element) -> Iterator[Tuple[ACTION, STATE]]:
         elif item.value == 'STAR':
             yield '∈', 31
         else:
-            yield '∉', '!__OR__|__EQ__|__GE__|__LE__|__MUL__|__GT__|__AND__|__LT__|__SUB__|__ADD__|__DIV__'
+            yield '∉', '!__ADD__|__AND__|__DIV__|__EQ__|__GE__|__GT__|__LE__|__LT__|__MUL__|__OR__|__SUB__'
     elif value == 14:
         if item.value == 'EQUAL_EQUAL':
             yield '∈', 21
@@ -214,7 +214,7 @@ def parser(value: NT_STATE, item: Element) -> Iterator[Tuple[ACTION, STATE]]:
         elif item.value == 'RV_EQUAL':
             yield '∈', 29
         else:
-            yield '∉', '!__OR__|__EQ__|__GE__|__AND__|__LE__|__GT__|__LT__'
+            yield '∉', '!__AND__|__EQ__|__GE__|__GT__|__LE__|__LT__|__OR__'
     elif value == 15:
         if item.value == 'COMMA':
             yield '∈', 37
@@ -251,7 +251,7 @@ def parser(value: NT_STATE, item: Element) -> Iterator[Tuple[ACTION, STATE]]:
         elif item.value == 'STAR':
             yield '∈', 31
         else:
-            yield '∉', '!__OR__|__EQ__|__GE__|__LE__|__MUL__|__POW__|__GT__|__LT__|__AND__|__SUB__|__ADD__|__DIV__'
+            yield '∉', '!__ADD__|__AND__|__DIV__|__EQ__|__GE__|__GT__|__LE__|__LT__|__MUL__|__OR__|__POW__|__SUB__'
     elif value == 18:
         if item.value == 'ISIN':
             yield '∈', 38
