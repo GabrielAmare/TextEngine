@@ -130,6 +130,9 @@ class ActionSelect(Dict[ACTION, TargetSelect]):
         if formal and len(cases) != 1:
             raise AmbiguityException(cases)
 
+        if len(cases) == 0:
+            return pg.PASS
+
         return pg.LINES(lines=cases)
 
     @property
