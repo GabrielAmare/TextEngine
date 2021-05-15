@@ -1,9 +1,10 @@
-from typing import Iterator, Tuple, Union
+from typing import Iterator, Tuple
+from item_engine import NT_STATE, Element, ACTION, STATE
 
 __all__ = ['parser']
 
 
-def parser(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
+def parser(value: NT_STATE, item: Element) -> Iterator[Tuple[ACTION, STATE]]:
     if value == 0:
         if item.value == 'DASH':
             yield '∈', 1
@@ -43,7 +44,7 @@ def parser(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
         elif item.value == '__POW__':
             yield 'as:c0', 17
         else:
-            yield '∉', '!__SET__|__DIV__|__FORALL__|__LT__|__EXISTS__|__CONSTRAINT__|__GT__|__OR__|__ATTR__|__POW__|__GE__|__EQUATIONS__|__PAR__|__NOT__|__SUB__|__NEG__|__EQ__|__LE__|__ENUMV__|__ADD__|__MUL__|__AND__'
+            yield '∉', '!__ATTR__|__EQ__|__GE__|__EXISTS__|__MUL__|__POW__|__GT__|__EQUATIONS__|__LT__|__ENUMV__|__SUB__|__ADD__|__CONSTRAINT__|__NOT__|__OR__|__LE__|__PAR__|__SET__|__AND__|__NEG__|__DIV__|__FORALL__'
     elif value == 1:
         if item.value in ('INT', 'VAR', '__NEG__', '__PAR__', '__POW__'):
             yield 'as:c0', '__NEG__'
@@ -87,7 +88,7 @@ def parser(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
         elif item.value == 'VAR':
             yield 'as:c1', '__MUL__'
         else:
-            yield '∉', '!__POW__|__GE__|__SUB__|__DIV__|__OR__|__EQ__|__LT__|__LE__|__GT__|__ADD__|__MUL__|__AND__'
+            yield '∉', '!__OR__|__EQ__|__GE__|__LE__|__MUL__|__POW__|__GT__|__LT__|__AND__|__SUB__|__ADD__|__DIV__'
     elif value == 5:
         if item.value == 'COMMA':
             yield '∈', 32
@@ -138,7 +139,7 @@ def parser(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
         elif item.value == 'STAR':
             yield '∈', 31
         else:
-            yield '∉', '!__POW__|__GE__|__AND__|__SUB__|__DIV__|__MUL__|__EQ__|__LT__|__LE__|__GT__|__ADD__|__OR__|__ATTR__'
+            yield '∉', '!__OR__|__ATTR__|__EQ__|__GE__|__LE__|__MUL__|__POW__|__GT__|__AND__|__LT__|__SUB__|__ADD__|__DIV__'
     elif value == 10:
         if item.value == 'DASH':
             yield '∈', 20
@@ -159,7 +160,7 @@ def parser(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
         elif item.value == 'RV_EQUAL':
             yield '∈', 29
         else:
-            yield '∉', '!__GE__|__SUB__|__EQ__|__LT__|__LE__|__GT__|__ADD__|__OR__|__AND__'
+            yield '∉', '!__OR__|__EQ__|__GE__|__LE__|__GT__|__AND__|__LT__|__SUB__|__ADD__'
     elif value == 11:
         if item.value == 'KW_AND':
             yield '∈', 23
@@ -196,7 +197,7 @@ def parser(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
         elif item.value == 'STAR':
             yield '∈', 31
         else:
-            yield '∉', '!__GE__|__SUB__|__DIV__|__MUL__|__EQ__|__LT__|__LE__|__GT__|__ADD__|__OR__|__AND__'
+            yield '∉', '!__OR__|__EQ__|__GE__|__LE__|__MUL__|__GT__|__AND__|__LT__|__SUB__|__ADD__|__DIV__'
     elif value == 14:
         if item.value == 'EQUAL_EQUAL':
             yield '∈', 21
@@ -213,7 +214,7 @@ def parser(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
         elif item.value == 'RV_EQUAL':
             yield '∈', 29
         else:
-            yield '∉', '!__EQ__|__GE__|__LT__|__LE__|__GT__|__OR__|__AND__'
+            yield '∉', '!__OR__|__EQ__|__GE__|__AND__|__LE__|__GT__|__LT__'
     elif value == 15:
         if item.value == 'COMMA':
             yield '∈', 37
@@ -250,7 +251,7 @@ def parser(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
         elif item.value == 'STAR':
             yield '∈', 31
         else:
-            yield '∉', '!__POW__|__GE__|__SUB__|__DIV__|__OR__|__EQ__|__LT__|__LE__|__GT__|__ADD__|__MUL__|__AND__'
+            yield '∉', '!__OR__|__EQ__|__GE__|__LE__|__MUL__|__POW__|__GT__|__LT__|__AND__|__SUB__|__ADD__|__DIV__'
     elif value == 18:
         if item.value == 'ISIN':
             yield '∈', 38
@@ -364,12 +365,10 @@ def parser(value: int, item) -> Iterator[Tuple[str, Union[int, str]]]:
     elif value == 40:
         if item.value == 'COMMA':
             yield '∈', 32
-            yield '∉', '__ENUMV__'
         else:
             yield '∉', '__ENUMV__'
     elif value == 41:
         if item.value == 'NEWLINE':
-            yield '∉', '__EQUATIONS__'
             yield '∈', 36
         else:
             yield '∉', '__EQUATIONS__'
