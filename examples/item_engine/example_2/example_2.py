@@ -1,6 +1,6 @@
 from tools37 import CsvFile
 
-from item_engine.textbase import MakeLexer, string, Engine, Parser
+from item_engine.textbase import MakeLexer, string, Engine, Parser, Char, Token
 
 REMOVE_COMPOSED = True
 
@@ -17,9 +17,11 @@ def extract_sign(code: str) -> str:
     return code.split('-')[3]
 
 
-data = [(row['expr'], extract_mood(row['code'])) for row in CsvFile.load("conj_file.csv") if
-        not REMOVE_COMPOSED or ' ' not in row['expr']]
-
+data = [
+    (row['expr'], extract_mood(row['code']))
+    for row in CsvFile.load("conj_file.csv")
+    if not REMOVE_COMPOSED or ' ' not in row['expr']
+]
 
 lexer, kws, sym = MakeLexer(
     keywords=[],
@@ -35,7 +37,12 @@ engine = Engine(
     parsers=[
         Parser(
             name='mood_lexer',
-            branch_set=lexer
+            branch_set=lexer,
+            input_cls=Char,
+            output_cls=Token,
+            skips=[],
+            reflexive=False,
+            formal=False,
         )
     ]
 )
@@ -50,4 +57,4 @@ engine.build(
 print('package built')
 
 for parser in engine.parsers:
-    parser.get_code.graph.display()
+    parser.graph.display()
