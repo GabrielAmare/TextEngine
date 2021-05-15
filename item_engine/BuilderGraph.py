@@ -30,7 +30,22 @@ class STYLES:
 class BuilderGraph(DAG):
     @classmethod
     def encode(cls, text: str):
-        return text.replace(INCLUDE, 'INC').replace(EXCLUDE, 'EXC')
+        letters = "abcdefghijklmnopqrstuvwxyz"
+        for i in range(1, len(letters) - 1):
+            text = text.replace(letters[:i] + letters[i + 1:], f"a-{letters[i]}{letters[i + 1]}-z")
+        LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        for i in range(1, len(LETTERS) - 1):
+            text = text.replace(LETTERS[:i] + LETTERS[i + 1:], f"A-{LETTERS[i]}{LETTERS[i + 1]}-Z")
+
+        return text.replace(INCLUDE, 'INC') \
+            .replace(EXCLUDE, 'EXC') \
+            .replace("ABCDEFGHIJKLMNOPQRSTUVWXYZ", r"A-Z") \
+            .replace("abcdefghijklmnopqrstuvwxyz", r"a-z") \
+            .replace("ABCDEFGHIJKLMNOPQRSTUVWXY", r"A-Y") \
+            .replace("abcdefghijklmnopqrstuvwxy", r"a-y") \
+            .replace("BCDEFGHIJKLMNOPQRSTUVWXYZ", r"B-Z") \
+            .replace("bcdefghijklmnopqrstuvwxyz", r"b-z") \
+            .replace("0123456789", r"0-9")
 
     def non_terminal_state(self, value: NT_STATE):
         return self.node(
