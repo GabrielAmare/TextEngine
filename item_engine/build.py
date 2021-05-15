@@ -369,7 +369,7 @@ class Engine:
         """
 
         import_section = pg.IMPORT_SECTION()
-        import_section.append("typing", "iterator")
+        import_section.append("typing", "Iterator")
         import_section.append("item_engine", pg.IMPORT_ALL)
 
         for parser in self.parsers:
@@ -393,7 +393,7 @@ class Engine:
                                     pg.ARG("function", v=parser.name),
                                     pg.ARG("input_cls", v=parser.input_cls.__name__),
                                     pg.ARG("output_cls", v=parser.output_cls.__name__),
-                                    pg.ARG("to_ignore", v=pg.LIST(parser.skips)),
+                                    pg.ARG("to_ignore", v=repr(parser.skips)),
                                     pg.AS_KWARG(f"{parser.name}_cfg")
                                 )
                             )
