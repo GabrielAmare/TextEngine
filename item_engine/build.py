@@ -105,7 +105,7 @@ class TargetSelect:
         elif self.valid_branches:
             return [T_STATE(branch.name) for branch in self.valid_branches]
         elif self.error_branches:
-            return [T_STATE("!" + "|".join(branch.name for branch in self.error_branches))]
+            return [T_STATE("!" + "|".join(sorted(branch.name for branch in self.error_branches)))]
         else:
             return [T_STATE("!")]
 
