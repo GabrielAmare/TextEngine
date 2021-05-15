@@ -17,7 +17,8 @@ __all__ = [
     "MODULE", "PACKAGE",
     "LAMBDA",
     "METHODS",
-    "PASS", "CONTINUE", "BREAK"
+    "PASS", "CONTINUE", "BREAK",
+    "IMPORT_SECTION", "IMPORT_ALL"
 ]
 
 PASS = "pass"
@@ -383,3 +384,32 @@ class METHODS:
     def REPR(cls, *args: ARG) -> DEF:
         expr: str = "{self.__class__.__name__}(" + ", ".join("{self." + arg.k + "!r}" for arg in args) + ")"
         return DEF(name="__repr__", args=ARGS(ARG("self")), body=LINES([RETURN(FSTR(expr))]))
+
+
+IMPORT_ALL = "*"
+
+
+class IMPORT_SECTION(CODE):
+    def __init__(self):
+        self.imports: Dict[str, List[str]] = {}
+
+    def __setitem__(self, module: str, name: str):
+        self.imports[module] = [name]
+
+    def append(self, module: str, name: str):
+        self.imports.setdefault(module, [])
+        if IMPORT_ALL not in self.imports[module]:
+            if name == IMPORT_ALL:
+                self.imports[module] = [name]
+            elif name not in self.imports[module]:
+                self.imports[module].append(name)
+
+    def extend(self, module: str, *names: str):
+        for name in names:
+            self.append(module, name)
+
+    def __str__(self):
+        return str(LINES([
+            FROM_IMPORT(module, ARGS(*names))
+            for module, names in self.imports.items()
+        ]))
