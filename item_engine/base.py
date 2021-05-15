@@ -346,6 +346,9 @@ class Branch(GenericItem, HasAlphabet, HasState, CanBeSplited):
 
 
 class BranchSet(GenericItemSet[Branch], HasAlphabet, HasState):
+    def __bool__(self):
+        return bool(self.items)
+
     def terminal_code(self, throw_errors: bool = False) -> Iterator[T_STATE]:
         valid_branches = [branch for branch in self.items if branch.is_valid]
         valid_max_priority = max([branch.priority for branch in valid_branches], default=0)
@@ -386,6 +389,15 @@ class BranchSet(GenericItemSet[Branch], HasAlphabet, HasState):
     def only_errors(self) -> BranchSet:
         """Remove the terminal branches"""
         return BranchSet(frozenset(branch for branch in self.items if branch.is_error))
+
+    def truncated(self, formal: bool):
+        if formal:
+            valid_part = self.only_valids
+            error_part = self.only_errors
+            non_terminal_part = self.only_non_terminals
+            return non_terminal_part or valid_part or error_part
+        else:
+            return self
 
 
 __all__ += ["Element", "OPTIONS"]
