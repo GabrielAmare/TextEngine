@@ -50,4 +50,4 @@ engine.build(
 print('package built')
 
 for parser in engine.parsers:
-    parser.l6.graph.display()
+    parser.get_code.graph.display()

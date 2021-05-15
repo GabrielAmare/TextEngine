@@ -112,8 +112,8 @@ engine = Engine(
 )
 
 for parser in engine.parsers:
-    parser.l6.graph.display()
-    parser.l6.to_csv(parser.name)
+    parser.get_code.graph.display()
+    parser.get_code.to_csv(parser.name)
 
 engine.build(
     allow_overwrite=True

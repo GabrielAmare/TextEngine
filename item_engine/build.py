@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Callable, Iterator, Tuple, Optional, Type
+from typing import Dict, List, Callable, Iterator, Tuple, Optional, Type, Union
 import python_generator as pg
 
 from .generate import L0, L1, L2, L3, L4, L5, L6
@@ -114,15 +114,14 @@ class ActionSelect(Dict[ACTION, TargetSelect]):
             self[action] = target_select = TargetSelect()
         target_select.add_branch(branch)
 
-    def l0s(self, func: FUNC) -> Iterator[L0]:
-        max_p = max(target_select.priority for target_select in self.values())
-        for action, target_select in self.items():
-            if target_select.priority == max_p:
-                for value in target_select.get_code(func):
-                    yield L0(action=action, value=value)
-
-    def l1(self, func: FUNC, formal: bool = False) -> L1:
-        cases = list(self.l0s(func))
+    def get_code(self, func: FUNC, formal: bool = False) -> L1:
+        max_priority = max(target_select.priority for target_select in self.values())
+        cases = [
+            L0(action=action, value=value)
+            for action, target_select in self.items()
+            if target_select.priority == max_priority
+            for value in target_select.get_code(func)
+        ]
 
         if formal and len(cases) != 1:
             raise AmbiguityException(cases)
@@ -165,21 +164,22 @@ class GroupSelect(Dict[Group, ActionSelect]):
                 return action_select
         return ActionSelect()
 
-    def l2s(self, func: FUNC, formal: bool = False) -> Iterator[L2]:
-        for group, action_select in self.cases:
-            yield L2(group=group, l1=action_select.l1(func, formal))
-
-    def l3(self, func: FUNC, formal: bool = False) -> L3:
-        return L3(cases=list(self.l2s(func)), default=self.default.l1(func, formal))
+    def get_code(self, func: FUNC, formal: bool = False) -> L3:
+        return L3(
+            cases=[
+                L2(group=group, l1=action_select.get_code(func, formal))
+                for group, action_select in self.cases
+            ],
+            default=self.default.get_code(func, formal)
+        )
 
 
 class ValueSelect(Dict[BranchSet, GroupSelect]):
-    def l4s(self, func: FUNC, formal: bool = False) -> Iterator[L4]:
-        for origin, group_select in self.items():
-            yield L4(value=func(origin), switch=group_select.l3(func, formal))
-
-    def l5(self, func: FUNC, formal: bool = False) -> L5:
-        return L5(cases=list(self.l4s(func, formal)))
+    def get_code(self, func: FUNC, formal: bool = False) -> L5:
+        return L5(cases=[
+            L4(value=func(origin), switch=group_select.get_code(func, formal))
+            for origin, group_select in self.items()
+        ])
 
 
 class Parser:
@@ -247,13 +247,13 @@ class Parser:
         return NT_STATE(self.branch_sets.index(branch_set))
 
     @property
-    def l6(self) -> L6:
-        return L6(name=self.name, l5=self.value_select.l5(self.get_nt_state, self.formal))
+    def get_code(self) -> L6:
+        return L6(name=self.name, l5=self.value_select.get_code(self.get_nt_state, self.formal))
 
     @property
     def code(self) -> pg.MODULE:
         """Generate a CODE object which represent the parser"""
-        return self.l6.code
+        return self.get_code.code
 
 
 class Engine:
