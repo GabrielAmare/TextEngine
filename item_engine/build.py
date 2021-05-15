@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Callable, Iterator, Tuple, Optional, Type, Union
+from typing import Dict, List, Callable, Iterator, Tuple, Optional, Type
+
 import python_generator as pg
 
-from .generate import L0, L1, L2, L3, L4, L5, L6
 from .generic_items import GenericItem, GenericItemSet, optimized
 from .constants import ACTION, STATE, NT_STATE, T_STATE
 from .base import Group, BranchSet, Branch, Element
+
+from tools37 import CsvFile
+from graph37 import Node
+from .BuilderGraph import BuilderGraph
 
 __all__ = ["Parser", "Engine"]
 
@@ -95,7 +99,7 @@ class TargetSelect:
         else:
             raise Exception(f"Unknown case for branch neither non-terminal, valid or error !")
 
-    def get_code(self, func: FUNC) -> Iterator[STATE]:
+    def get_target_states(self, func: FUNC) -> Iterator[STATE]:
         if self.non_terminal_part:
             return [func(self.non_terminal_part)]
         elif self.valid_branches:
@@ -114,19 +118,19 @@ class ActionSelect(Dict[ACTION, TargetSelect]):
             self[action] = target_select = TargetSelect()
         target_select.add_branch(branch)
 
-    def get_code(self, func: FUNC, formal: bool = False) -> L1:
+    def code(self, func: FUNC, formal: bool = False) -> pg.LINES:
         max_priority = max(target_select.priority for target_select in self.values())
         cases = [
-            L0(action=action, value=value)
+            pg.YIELD(line=f"{action!r}, {value!r}")
             for action, target_select in self.items()
             if target_select.priority == max_priority
-            for value in target_select.get_code(func)
+            for value in target_select.get_target_states(func)
         ]
 
         if formal and len(cases) != 1:
             raise AmbiguityException(cases)
 
-        return L1(cases=cases)
+        return pg.LINES(lines=cases)
 
     @property
     def targets(self) -> Iterator[BranchSet]:
@@ -164,22 +168,31 @@ class GroupSelect(Dict[Group, ActionSelect]):
                 return action_select
         return ActionSelect()
 
-    def get_code(self, func: FUNC, formal: bool = False) -> L3:
-        return L3(
-            cases=[
-                L2(group=group, l1=action_select.get_code(func, formal))
+    def code(self, func: FUNC, formal: bool = False) -> pg.SWITCH:
+        return pg.SWITCH(
+            ifs=[
+                pg.IF(
+                    cond=group.condition,
+                    body=action_select.code(func, formal)
+                )
                 for group, action_select in self.cases
             ],
-            default=self.default.get_code(func, formal)
+            default=self.default.code(func, formal) if self.default else None
         )
 
 
-class ValueSelect(Dict[BranchSet, GroupSelect]):
-    def get_code(self, func: FUNC, formal: bool = False) -> L5:
-        return L5(cases=[
-            L4(value=func(origin), switch=group_select.get_code(func, formal))
-            for origin, group_select in self.items()
-        ])
+class OriginSelect(Dict[BranchSet, GroupSelect]):
+    def code(self, func: FUNC, formal: bool = False) -> pg.SWITCH:
+        return pg.SWITCH(
+            ifs=[
+                pg.IF(
+                    cond=pg.EQ("value", repr(func(origin))),
+                    body=group_select.code(func, formal)
+                )
+                for origin, group_select in self.items()
+            ],
+            default=pg.RAISE(pg.EXCEPTION("f'\\nvalue: {value!r}\\nitem: {item!r}'"))
+        )
 
 
 class Parser:
@@ -211,7 +224,7 @@ class Parser:
         self.skips: List[T_STATE] = skips
 
         self.branch_sets: List[BranchSet] = [self.branch_set]
-        self.value_select: ValueSelect = ValueSelect()
+        self.origin_select: OriginSelect = OriginSelect()
 
         self.build()
 
@@ -224,7 +237,7 @@ class Parser:
         while index < len(self.branch_sets):
             branch_set: BranchSet = self.branch_sets[index]
             group_select: GroupSelect = self.extract(branch_set)
-            self.value_select[branch_set] = group_select
+            self.origin_select[branch_set] = group_select
             self.include(group_select)
             index += 1
 
@@ -247,13 +260,86 @@ class Parser:
         return NT_STATE(self.branch_sets.index(branch_set))
 
     @property
-    def get_code(self) -> L6:
-        return L6(name=self.name, l5=self.value_select.get_code(self.get_nt_state, self.formal))
+    def code(self) -> pg.MODULE:
+        return pg.MODULE(items=[
+            pg.FROM_IMPORT("typing", pg.ARGS("Iterator", "Tuple", "Union")),
+            pg.SETATTR(k="__all__", v=pg.LIST([pg.STR(self.name)])),
+            pg.DEF(
+                name=self.name,
+                args=pg.ARGS("value: int", "item"),
+                body=self.origin_select.code(self.get_nt_state, self.formal),
+                type="Iterator[Tuple[str, Union[int, str]]]"
+            ),
+        ])
+
+    def to_csv(self, fp: str) -> None:
+        data = []
+
+        for origin, group_select in self.origin_select.items():
+            for group, action_select in (*group_select.cases, (Group.never(), group_select.default)):
+                for action, target_select in action_select.items():
+                    for target_state in target_select.get_target_states(self.get_nt_state):
+                        data.append(dict(
+                            origin=str(self.get_nt_state(origin)),
+                            group=str(group).replace('\n', ''),
+                            action=action,
+                            target=target_state
+                        ))
+
+        CsvFile.save(fp, keys=["origin", "group", "action", "target"], data=data)
 
     @property
-    def code(self) -> pg.MODULE:
-        """Generate a CODE object which represent the parser"""
-        return self.get_code.code
+    def graph(self, **config):
+        dag = BuilderGraph(**config, name=self.name)
+
+        branch_set_nodes: Dict[STATE, Node] = {}
+        errors: Dict[T_STATE, Node] = {}
+        valids: Dict[T_STATE, Node] = {}
+
+        def get_branch_set_node(value: STATE):
+            if isinstance(value, T_STATE):
+                if value.startswith('!'):
+                    value = '!' + '|'.join(sorted(value[1:].split('|')))
+                    if value not in errors:
+                        errors[value] = dag.terminal_error_state(value)
+                    return errors[value]
+                else:
+                    if value not in valids:
+                        valids[value] = dag.terminal_valid_state(value)
+                    return valids[value]
+            elif isinstance(value, NT_STATE):
+                if value not in branch_set_nodes:
+                    branch_set_nodes[value] = dag.non_terminal_state(value)
+                return branch_set_nodes[value]
+            else:
+                raise TypeError(type(value))
+
+        memory = {}
+
+        def make_chain(origin: NT_STATE, group: Group, action: ACTION, target: STATE):
+            origin_node = get_branch_set_node(origin)
+            target_node = get_branch_set_node(target)
+            k1 = (group, action, target_node)
+            if k1 in memory:
+                group_action_node = memory[k1]
+            else:
+                memory[k1] = group_action_node = dag.group_action(group, action)
+                dag.link(group_action_node, target_node)
+
+            k3 = (origin_node, group_action_node)
+            if k3 not in memory:
+                memory[k3] = dag.link(origin_node, group_action_node)
+
+        for origin, group_select in self.origin_select.items():
+            origin_value = self.get_nt_state(origin)
+            for group, action_select in (*group_select.cases, (Group.never(), group_select.default)):
+                for action, target_select in action_select.items():
+                    target_states = target_select.get_target_states(self.get_nt_state)
+                    target_states = sorted(target_states, key=lambda state: not isinstance(state, str))
+                    for target_value in target_states:
+                        make_chain(origin_value, group, action, target_value)
+
+        return dag
 
 
 class Engine:
