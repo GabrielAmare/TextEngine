@@ -367,11 +367,19 @@ class Engine:
             yield ReflexiveNetwork(parser=parser, **lexer_cfg)
 
         """
+
+        import_section = pg.IMPORT_SECTION()
+        import_section.append("typing", "iterator")
+        import_section.append("item_engine", pg.IMPORT_ALL)
+
+        for parser in self.parsers:
+            import_section.append(parser.input_cls.__module__, parser.input_cls.__name__)
+            import_section.append(parser.output_cls.__module__, parser.output_cls.__name__)
+            import_section.append("." + parser.name, parser.name)
+
         return pg.PACKAGE(name=self.name, modules={
             '__init__': pg.MODULE(items=[
-                pg.FROM_IMPORT("typing", pg.ARGS("Iterator")),
-                pg.FROM_IMPORT("item_engine", pg.ARGS("*")),
-                *[pg.FROM_IMPORT('.' + parser.name, pg.ARGS(parser.name)) for parser in self.parsers],
+                import_section,
                 pg.SETATTR("__all__", pg.LIST([pg.STR("gen_networks")])),
                 pg.DEF(
                     name="gen_networks",
@@ -383,6 +391,9 @@ class Engine:
                                 name="ReflexiveNetwork" if parser.reflexive else "Network",
                                 args=pg.ARGS(
                                     pg.ARG("function", v=parser.name),
+                                    pg.ARG("input_cls", v=parser.input_cls.__name__),
+                                    pg.ARG("output_cls", v=parser.output_cls.__name__),
+                                    pg.ARG("to_ignore", v=pg.LIST(parser.skips)),
                                     pg.AS_KWARG(f"{parser.name}_cfg")
                                 )
                             )
