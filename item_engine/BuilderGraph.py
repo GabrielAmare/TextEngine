@@ -12,16 +12,16 @@ __all__ = ["BuilderGraph"]
 class STYLES:
     class NODES:
         class STATES:
-            NON_TERMINAL = dict(shape="box", style="filled", fillcolor="lightgray", color="blue")
-            TERMINAL_VALID = dict(shape="box", style="filled", fillcolor="gold", color="blue")
+            NON_TERMINAL = dict(shape="box", style="filled", fillcolor="white", color="blue")
+            TERMINAL_VALID = dict(shape="box", style="filled", fillcolor="lime", color="blue")
             TERMINAL_ERROR = dict(shape="box", style="filled", fillcolor="red", color="blue")
 
         ACTION = dict(shape="box", style="filled", fillcolor="gray", color="blue")
         GROUP = dict(shape="box", style="filled", fillcolor="gold", color="blue")
 
-        GROUP_ACTION = dict(shape="record", style="filled", fillcolor="lightblue", color="blue")
-        GROUP_ACTION_INC = dict(shape="record", style="filled", fillcolor="lime", color="blue")
-        GROUP_ACTION_EXC = dict(shape="record", style="filled", fillcolor="orange", color="blue")
+        GROUP_ACTION = dict(shape="record", style="filled", fillcolor="#12fcd5", color="blue")
+        GROUP_ACTION_INC = dict(shape="record", style="filled", fillcolor="#f9fc12", color="blue")
+        GROUP_ACTION_EXC = dict(shape="record", style="filled", fillcolor="#abad0e", color="blue")
 
     class LINKS:
         BASE = dict(constraint="true", arrowhead="vee", arrowtail="none", color="white")
