@@ -265,13 +265,14 @@ class Parser:
     @property
     def code(self) -> pg.MODULE:
         return pg.MODULE(items=[
-            pg.FROM_IMPORT("typing", pg.ARGS("Iterator", "Tuple", "Union")),
+            pg.FROM_IMPORT("typing", pg.ARGS("Iterator", "Tuple")),
+            pg.FROM_IMPORT("item_engine", pg.ARGS("NT_STATE", "Element", "ACTION", "STATE")),
             pg.SETATTR(k="__all__", v=pg.LIST([pg.STR(self.name)])),
             pg.DEF(
                 name=self.name,
-                args=pg.ARGS("value: int", "item"),
+                args=pg.ARGS("value: NT_STATE", "item: Element"),
                 body=self.origin_select.code(self.get_nt_state, self.formal),
-                type="Iterator[Tuple[str, Union[int, str]]]"
+                type="Iterator[Tuple[ACTION, STATE]]"
             ),
         ])
 
