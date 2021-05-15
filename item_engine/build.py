@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Callable, Iterator, Tuple, Optional, Type
 import python_generator as pg
 
@@ -60,31 +60,80 @@ class GroupToOutcome(Dict[Group, Outcome]):
 FUNC = Callable[[BranchSet], STATE]
 
 
-class ActionSelect(Dict[ACTION, BranchSet]):
+@dataclass
+class TargetSelect:
+    non_terminal_part: BranchSet = field(default_factory=BranchSet)
+    valid_branches: List[Branch] = field(default_factory=list)
+    error_branches: List[Branch] = field(default_factory=list)
+    valid_priority: int = 0
+    error_priority: int = 0
+
+    @property
+    def priority(self):
+        if self.non_terminal_part:
+            return 2, 1
+        elif self.valid_branches:
+            return 1, self.valid_priority
+        else:
+            return 0, self.error_priority
+
+    def add_branch(self, branch: Branch) -> None:
+        if not branch.is_terminal:
+            self.non_terminal_part += branch
+        elif branch.is_valid:
+            if branch.priority > self.valid_priority:
+                self.valid_priority = branch.priority
+                self.valid_branches = [branch]
+            elif branch.priority == self.valid_priority:
+                self.valid_branches.append(branch)
+        elif branch.is_error:
+            if branch.priority > self.error_priority:
+                self.error_priority = branch.priority
+                self.error_branches = [branch]
+            elif branch.priority == self.error_priority:
+                self.error_branches.append(branch)
+        else:
+            raise Exception(f"Unknown case for branch neither non-terminal, valid or error !")
+
+    def get_code(self, func: FUNC) -> Iterator[STATE]:
+        if self.non_terminal_part:
+            return [func(self.non_terminal_part)]
+        elif self.valid_branches:
+            return [T_STATE(branch.name) for branch in self.valid_branches]
+        elif self.error_branches:
+            return [T_STATE("!" + "|".join(branch.name for branch in self.error_branches))]
+        else:
+            return [T_STATE("!")]
+
+
+class ActionSelect(Dict[ACTION, TargetSelect]):
     def add(self, action: ACTION, branch: Branch) -> None:
         if action in self:
-            self[action] |= branch.as_group
+            target_select = self[action]
         else:
-            self[action] = branch.as_group
+            self[action] = target_select = TargetSelect()
+        target_select.add_branch(branch)
 
-    def l0s(self, func: FUNC, throw_errors: bool) -> Iterator[L0]:
-        for action, branch_set in self.items():
-            if branch_set.is_terminal:
-                for value in branch_set.terminal_code(throw_errors):
+    def l0s(self, func: FUNC) -> Iterator[L0]:
+        max_p = max(target_select.priority for target_select in self.values())
+        for action, target_select in self.items():
+            if target_select.priority == max_p:
+                for value in target_select.get_code(func):
                     yield L0(action=action, value=value)
-            else:
-                yield L0(action=action, value=func(branch_set))
 
     def l1(self, func: FUNC, formal: bool = False) -> L1:
-        # we throw errors when there's something different than an error
-        throw_errors = not all(branch.is_error for branch_set in self.values() for branch in branch_set.items)
-
-        cases = list(self.l0s(func, throw_errors))
+        cases = list(self.l0s(func))
 
         if formal and len(cases) != 1:
-            raise AmbiguityException()
+            raise AmbiguityException(cases)
 
         return L1(cases=cases)
+
+    @property
+    def targets(self) -> Iterator[BranchSet]:
+        for target_select in self.values():
+            if target_select.non_terminal_part.items:
+                yield target_select.non_terminal_part
 
 
 class GroupSelect(Dict[Group, ActionSelect]):
@@ -98,8 +147,7 @@ class GroupSelect(Dict[Group, ActionSelect]):
     @property
     def targets(self) -> Iterator[BranchSet]:
         for action_select in self.values():
-            for target in action_select.values():
-                yield target
+            yield from action_select.targets
 
     @property
     def cases(self) -> Iterator[Tuple[Group, ActionSelect]]:
@@ -180,8 +228,8 @@ class Parser:
             self.include(group_select)
             index += 1
 
-    def include(self, gtatbs: GroupSelect) -> None:
-        for branch_set in gtatbs.targets:
+    def include(self, group_select: GroupSelect) -> None:
+        for branch_set in group_select.targets:
             if branch_set.is_terminal:
                 continue
 
