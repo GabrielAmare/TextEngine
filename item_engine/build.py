@@ -29,11 +29,11 @@ class ActionToBranch(GenericItem):
 
 class Outcome(GenericItemSet[ActionToBranch]):
     @property
-    def atbs(self) -> PickAction:
-        atbs: PickAction = PickAction()
+    def action_select(self) -> ActionSelect:
+        action_select: ActionSelect = ActionSelect()
         for atb in self.items:
-            atbs.add(atb.action, atb.branch)
-        return atbs
+            action_select.add(atb.action, atb.branch)
+        return action_select
 
 
 class GroupToOutcome(Dict[Group, Outcome]):
@@ -60,7 +60,7 @@ class GroupToOutcome(Dict[Group, Outcome]):
 FUNC = Callable[[BranchSet], STATE]
 
 
-class PickAction(Dict[ACTION, BranchSet]):
+class ActionSelect(Dict[ACTION, BranchSet]):
     def add(self, action: ACTION, branch: Branch) -> None:
         if action in self:
             self[action] |= branch.as_group
@@ -87,45 +87,48 @@ class PickAction(Dict[ACTION, BranchSet]):
         return L1(cases=cases)
 
 
-class PickGroup(Dict[Group, PickAction]):
+class GroupSelect(Dict[Group, ActionSelect]):
     @staticmethod
-    def from_gto(gto: GroupToOutcome) -> PickGroup:
-        return PickGroup({
-            group: outcome.atbs
+    def from_gto(gto: GroupToOutcome) -> GroupSelect:
+        return GroupSelect({
+            group: outcome.action_select
             for group, outcome in gto.items()
         })
 
     @property
-    def branch_sets(self) -> Iterator[BranchSet]:
-        for atbs in self.values():
-            for branch_set in atbs.values():
-                yield branch_set
+    def targets(self) -> Iterator[BranchSet]:
+        for action_select in self.values():
+            for target in action_select.values():
+                yield target
 
     @property
-    def cases(self) -> Iterator[Tuple[Group, PickAction]]:
-        for group, atbs in self.items():
+    def cases(self) -> Iterator[Tuple[Group, ActionSelect]]:
+        for group, action_select in self.items():
             if not group.inverted:
-                yield group, atbs
+                yield group, action_select
 
     @property
-    def default(self) -> PickAction:
-        for group, atbs in self.items():
+    def default(self) -> ActionSelect:
+        # TODO : check if no default means that all items are handled by the cases,
+        #  in this case : an optimization could be to take the more time-consuming case as default
+        #  (and therefore not having to verify it)
+        for group, action_select in self.items():
             if group.inverted:
-                return atbs
-        return PickAction()
+                return action_select
+        return ActionSelect()
 
     def l2s(self, func: FUNC, formal: bool = False) -> Iterator[L2]:
-        for group, atbs in self.cases:
-            yield L2(group=group, l1=atbs.l1(func, formal))
+        for group, action_select in self.cases:
+            yield L2(group=group, l1=action_select.l1(func, formal))
 
     def l3(self, func: FUNC, formal: bool = False) -> L3:
         return L3(cases=list(self.l2s(func)), default=self.default.l1(func, formal))
 
 
-class PickBranchSet(Dict[BranchSet, PickGroup]):
+class ValueSelect(Dict[BranchSet, GroupSelect]):
     def l4s(self, func: FUNC, formal: bool = False) -> Iterator[L4]:
-        for origin, gtatbs in self.items():
-            yield L4(value=func(origin), switch=gtatbs.l3(func, formal))
+        for origin, group_select in self.items():
+            yield L4(value=func(origin), switch=group_select.l3(func, formal))
 
     def l5(self, func: FUNC, formal: bool = False) -> L5:
         return L5(cases=list(self.l4s(func, formal)))
@@ -155,12 +158,12 @@ class Parser:
         self.branch_set: BranchSet = branch_set
         self.input_cls: Type[Element] = input_cls
         self.output_cls: Type[Element] = output_cls
-        self.pbs: PickBranchSet = PickBranchSet()
         self.reflexive: bool = reflexive
         self.formal: bool = formal
         self.skips: List[T_STATE] = skips
 
         self.branch_sets: List[BranchSet] = [self.branch_set]
+        self.value_select: ValueSelect = ValueSelect()
 
         self.build()
 
@@ -172,13 +175,13 @@ class Parser:
         index = 0
         while index < len(self.branch_sets):
             branch_set: BranchSet = self.branch_sets[index]
-            gtatbs: PickGroup = self.extract(branch_set)
-            self.pbs[branch_set] = gtatbs
-            self.include(gtatbs)
+            group_select: GroupSelect = self.extract(branch_set)
+            self.value_select[branch_set] = group_select
+            self.include(group_select)
             index += 1
 
-    def include(self, gtatbs: PickGroup) -> None:
-        for branch_set in gtatbs.branch_sets:
+    def include(self, gtatbs: GroupSelect) -> None:
+        for branch_set in gtatbs.targets:
             if branch_set.is_terminal:
                 continue
 
@@ -187,17 +190,17 @@ class Parser:
 
             self.branch_sets.append(branch_set)
 
-    def extract(self, branch_set: BranchSet) -> PickGroup:
+    def extract(self, branch_set: BranchSet) -> GroupSelect:
         gto: GroupToOutcome = GroupToOutcome.from_branch_set(branch_set).optimized
-        gtatbs: PickGroup = PickGroup.from_gto(gto)
-        return gtatbs
+        group_select: GroupSelect = GroupSelect.from_gto(gto)
+        return group_select
 
     def get_nt_state(self, branch_set: BranchSet) -> NT_STATE:
         return NT_STATE(self.branch_sets.index(branch_set))
 
     @property
     def l6(self) -> L6:
-        return L6(name=self.name, l5=self.pbs.l5(self.get_nt_state, self.formal))
+        return L6(name=self.name, l5=self.value_select.l5(self.get_nt_state, self.formal))
 
     @property
     def code(self) -> pg.MODULE:
