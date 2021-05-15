@@ -123,17 +123,17 @@ from examples.item_engine.example_1.maths import gen_networks
 
 lexer, parser = gen_networks(
     lexer_cfg=dict(
-        input_cls=engine.parsers[0].input_cls,
-        output_cls=engine.parsers[0].output_cls,
-        to_ignore=engine.parsers[0].skips,
+        # input_cls=engine.parsers[0].input_cls,
+        # output_cls=engine.parsers[0].output_cls,
+        # to_ignore=engine.parsers[0].skips,
         allow_gaps=True,
         save_terminals=True,
         remove_previous=False
     ),
     parser_cfg=dict(
-        input_cls=engine.parsers[1].input_cls,
-        output_cls=engine.parsers[1].output_cls,
-        to_ignore=engine.parsers[1].skips,
+        # input_cls=engine.parsers[1].input_cls,
+        # output_cls=engine.parsers[1].output_cls,
+        # to_ignore=engine.parsers[1].skips,
         allow_gaps=True
     )
 )
@@ -144,17 +144,17 @@ from examples.item_engine.example_1.maths.materials import *
 def parse_text(text: str):
     lexer, parser = gen_networks(
         lexer_cfg=dict(
-            input_cls=Char,
-            output_cls=Token,
-            to_ignore=["WHITESPACE"],
+            # input_cls=Char,
+            # output_cls=Token,
+            # to_ignore=["WHITESPACE"],
             allow_gaps=True,
             save_terminals=True,
             remove_previous=False
         ),
         parser_cfg=dict(
-            input_cls=Token,
-            output_cls=Lemma,
-            to_ignore=[],
+            # input_cls=Token,
+            # output_cls=Lemma,
+            # to_ignore=[],
             allow_gaps=True
         )
     )
