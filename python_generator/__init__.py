@@ -16,8 +16,13 @@ __all__ = [
     "CONDITION", "EQ", "NE", "IN", "NOT_IN", "LT", "LE", "GT", "GE", "ISINSTANCE",
     "MODULE", "PACKAGE",
     "LAMBDA",
-    "METHODS"
+    "METHODS",
+    "PASS", "CONTINUE", "BREAK"
 ]
+
+PASS = "pass"
+CONTINUE = "continue"
+BREAK = "break"
 
 
 def indent(text) -> str:
