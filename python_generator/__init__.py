@@ -136,6 +136,12 @@ class SCOPE(CODE):
 
 
 @dataclass
+class BLOCK(SCOPE):
+    def __str__(self):
+        return indent(super().__str__())
+
+
+@dataclass
 class IF(CODE):
     cond: CONDITION
     body: C
