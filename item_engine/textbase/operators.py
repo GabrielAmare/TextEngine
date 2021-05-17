@@ -29,7 +29,7 @@ class UNIT:
 
         return pg.IF(
             cond=pg.EQ("e.value", pg.STR(self.n)),
-            body=pg.LINES([
+            body=pg.SCOPE([
                 *prem,
                 pg.RETURN(pg.CALL(cls_name, pg.ARGS(pg.CALL(self.t.__name__, pg.ARGS(arg)))))
             ])
@@ -39,13 +39,13 @@ class UNIT:
         args = [pg.ARG(k=self.k, t=self.t.__name__)]
         return pg.CLASS(
             name=cls_name,
-            body=pg.LINES([
+            body=pg.SCOPE([
                 pg.METHODS.INIT(*args),
                 pg.METHODS.REPR(*args),
                 pg.DEF(
                     name="__str__",
                     args=pg.ARGS(pg.ARG(k="self")),
-                    body=pg.LINES([
+                    body=pg.SCOPE([
                         pg.RETURN(f"str(self.{self.k})")
                     ])
                 )
@@ -78,13 +78,13 @@ class OP:
         args = [pg.ARG(k=f"c{index}") for index in range(self.n)]
         return pg.CLASS(
             name=cls_name,
-            body=pg.LINES([
+            body=pg.SCOPE([
                 pg.METHODS.INIT(*args),
                 pg.METHODS.REPR(*args),
                 pg.DEF(
                     name="__str__",
                     args=pg.ARGS(pg.ARG(k="self")),
-                    body=pg.LINES([
+                    body=pg.SCOPE([
                         pg.RETURN(pg.FSTR(self.as_str))
                     ])
                 )
@@ -119,24 +119,24 @@ class ENUM:
     def pg_class(self, cls_name: str) -> pg.CLASS:
         return pg.CLASS(
             name=cls_name,
-            body=pg.LINES(
+            body=pg.SCOPE(
                 [
                     pg.DEF(
                         name="__init__",
                         args=pg.ARGS(pg.ARG(k="self"), pg.ARG(k="*cs")),
-                        body=pg.LINES([pg.SETATTR(k=f"self.cs", v="cs")])
+                        body=pg.SCOPE([pg.SETATTR(k=f"self.cs", v="cs")])
                     ),
                     pg.DEF(
                         name="__repr__",
                         args=pg.ARGS(pg.ARG(k="self")),
-                        body=pg.LINES([
+                        body=pg.SCOPE([
                             pg.RETURN(pg.FSTR("{self.__class__.__name__}({', '.join(map(repr, self.cs))})"))
                         ])
                     ),
                     pg.DEF(
                         name="__str__",
                         args=pg.ARGS(pg.ARG(k="self")),
-                        body=pg.LINES([
+                        body=pg.SCOPE([
                             pg.RETURN(
                                 pg.CALL(f"{str(self.s)!r}.join", pg.ARGS(pg.CALL("map", pg.ARGS("str", "self.cs")))))
                         ])

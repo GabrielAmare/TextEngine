@@ -5,7 +5,7 @@ from typing import Optional, List, Union, Dict
 
 __all__ = [
     "CODE",
-    "RAW", "LINES",
+    "RAW", "SCOPE",
     "IF",
     "RETURN", "YIELD", "RAISE",
     "SWITCH",
@@ -39,10 +39,10 @@ class CODE:
     def __str__(self):
         raise NotImplementedError
 
-    def __and__(self, other) -> LINES:
-        left = self.lines if isinstance(self, LINES) else [self]
-        right = other.lines if isinstance(other, LINES) else [other]
-        return LINES(*left, *right)
+    def __and__(self, other) -> SCOPE:
+        left = self.lines if isinstance(self, SCOPE) else [self]
+        right = other.lines if isinstance(other, SCOPE) else [other]
+        return SCOPE(*left, *right)
 
 
 C = Union[CODE, str]
@@ -114,7 +114,7 @@ class RAW(CODE):
 
 
 @dataclass
-class LINES(CODE):
+class SCOPE(CODE):
     lines: List[C]
 
     def __str__(self):
@@ -375,7 +375,7 @@ class LAMBDA(CODE):
 class FOR(CODE):
     args: ARGS
     iterator: INLINE
-    body: LINES
+    body: SCOPE
 
     def __str__(self):
         return f"for {self.args!s} in {self.iterator!s}:\n{indent(str(self.body))}"
@@ -384,7 +384,7 @@ class FOR(CODE):
 @dataclass
 class WHILE(CODE):
     cond: INLINE
-    body: LINES
+    body: SCOPE
 
     def __str__(self):
         return f"while {self.cond!s}:\n{indent(str(self.body))}"
@@ -452,13 +452,13 @@ class PACKAGE:
 class METHODS:
     @classmethod
     def INIT(cls, *args: ARG) -> DEF:
-        body: LINES = LINES([SETATTR(k=f"self.{arg.k}", v=arg.k, t=arg.t) for arg in args])
+        body: SCOPE = SCOPE([SETATTR(k=f"self.{arg.k}", v=arg.k, t=arg.t) for arg in args])
         return DEF(name="__init__", args=ARGS(ARG("self"), *args), body=body)
 
     @classmethod
     def REPR(cls, *args: ARG) -> DEF:
         expr: str = "{self.__class__.__name__}(" + ", ".join("{self." + arg.k + "!r}" for arg in args) + ")"
-        return DEF(name="__repr__", args=ARGS(ARG("self")), body=LINES([RETURN(FSTR(expr))]))
+        return DEF(name="__repr__", args=ARGS(ARG("self")), body=SCOPE([RETURN(FSTR(expr))]))
 
 
 IMPORT_ALL = "*"
@@ -484,7 +484,7 @@ class IMPORT_SECTION(CODE):
             self.append(module, name)
 
     def __str__(self):
-        return str(LINES([
+        return str(SCOPE([
             FROM_IMPORT(module, ARGS(*names))
             for module, names in self.imports.items()
         ]))

@@ -122,7 +122,7 @@ class ActionSelect(Dict[ACTION, TargetSelect]):
             self[action] = target_select = TargetSelect()
         target_select.add_branch(branch)
 
-    def code(self, func: FUNC, formal: bool = False) -> pg.LINES:
+    def code(self, func: FUNC, formal: bool = False) -> pg.SCOPE:
         max_priority = max(target_select.priority for target_select in self.values())
         cases = [
             pg.YIELD(line=f"{action!r}, {value!r}")
@@ -137,7 +137,7 @@ class ActionSelect(Dict[ACTION, TargetSelect]):
         if len(cases) == 0:
             return pg.PASS
 
-        return pg.LINES(lines=cases)
+        return pg.SCOPE(lines=cases)
 
     @property
     def targets(self) -> Iterator[BranchSet]:
@@ -391,7 +391,7 @@ class Engine:
                     name="gen_networks",
                     args=pg.ARGS(*[pg.ARG(f"{parser.name}_cfg", t="dict") for parser in self.parsers]),
                     type="Iterator[Network]",
-                    body=pg.LINES([
+                    body=pg.SCOPE([
                         pg.YIELD(
                             pg.CALL(
                                 name="ReflexiveNetwork" if parser.reflexive else "Network",
