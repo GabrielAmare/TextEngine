@@ -40,8 +40,8 @@ class CODE:
         raise NotImplementedError
 
     def __and__(self, other) -> SCOPE:
-        left = self.lines if isinstance(self, SCOPE) else [self]
-        right = other.lines if isinstance(other, SCOPE) else [other]
+        left = self.statements if isinstance(self, SCOPE) else [self]
+        right = other.statements if isinstance(other, SCOPE) else [other]
         return SCOPE(*left, *right)
 
 
@@ -115,12 +115,12 @@ class RAW(CODE):
 
 @dataclass
 class SCOPE(CODE):
-    lines: List[C]
+    statements: List[C]
 
     def __str__(self):
         r = ""
         prefix = ""
-        for line in self.lines:
+        for line in self.statements:
             r += prefix
             r += str(line)
             if isinstance(line, DEF):
