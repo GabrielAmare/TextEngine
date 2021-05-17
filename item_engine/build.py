@@ -73,6 +73,10 @@ class TargetSelect:
     error_priority: int = 0
 
     @property
+    def target(self) -> BranchSet:
+        return self.non_terminal_part | BranchSet(self.valid_branches)
+
+    @property
     def priority(self):
         if self.non_terminal_part:
             return 2, 1
@@ -101,7 +105,7 @@ class TargetSelect:
 
     def get_target_states(self, func: FUNC) -> Iterator[STATE]:
         if self.non_terminal_part:
-            return [func(self.non_terminal_part)]
+            return [func(self.target)]
         elif self.valid_branches:
             return [T_STATE(branch.name) for branch in self.valid_branches]
         elif self.error_branches:
@@ -137,9 +141,10 @@ class ActionSelect(Dict[ACTION, TargetSelect]):
 
     @property
     def targets(self) -> Iterator[BranchSet]:
+        """Return all the non-terminal branch-sets"""
         for target_select in self.values():
-            if target_select.non_terminal_part.items:
-                yield target_select.non_terminal_part
+            if target_select.non_terminal_part:
+                yield target_select.target
 
 
 class GroupSelect(Dict[Group, ActionSelect]):
@@ -172,13 +177,14 @@ class GroupSelect(Dict[Group, ActionSelect]):
         return ActionSelect()
 
     def code(self, func: FUNC, formal: bool = False) -> pg.SWITCH:
+        cases = sorted(self.cases, key=lambda item: len(item[0].items))
         return pg.SWITCH(
             ifs=[
                 pg.IF(
                     cond=group.condition,
                     body=action_select.code(func, formal)
                 )
-                for group, action_select in self.cases
+                for group, action_select in cases
             ],
             default=self.default.code(func, formal) if self.default else None
         )
@@ -336,7 +342,7 @@ class Parser:
 
         for origin, group_select in self.origin_select.items():
             origin_value = self.get_nt_state(origin)
-            for group, action_select in (*group_select.cases, (Group.never(), group_select.default)):
+            for group, action_select in group_select.cases:
                 for action, target_select in action_select.items():
                     target_states = target_select.get_target_states(self.get_nt_state)
                     target_states = sorted(target_states, key=lambda state: not isinstance(state, str))
