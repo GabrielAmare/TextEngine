@@ -100,10 +100,7 @@ class CanBeSplited:
             Split the rules by returning a Match followed by the remaining Rule after the Match
         """
         if isinstance(self, Empty):
-            if self.is_valid:
-                yield Match(group=Group.always(), action=EXCLUDE), self
-            else:
-                yield Match(group=Group.never(), action=EXCLUDE), self
+            yield Match(group=Group.always(), action=EXCLUDE), self
         elif isinstance(self, Optional):
             for first, after in self.rule.splited:
                 yield first, after
