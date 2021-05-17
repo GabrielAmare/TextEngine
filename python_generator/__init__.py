@@ -144,10 +144,10 @@ class BLOCK(SCOPE):
 @dataclass
 class IF(CODE):
     cond: CONDITION
-    body: C
+    block: C
 
     def __str__(self):
-        return f"if {self.cond!s}:\n{indent(self.body)}"
+        return f"if {self.cond!s}:\n{indent(self.block)}"
 
 
 @dataclass
