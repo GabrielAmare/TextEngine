@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 from dataclasses import dataclass
 from typing import Optional, List, Union, Dict
@@ -9,7 +10,7 @@ __all__ = [
     "RETURN", "YIELD", "RAISE",
     "SWITCH",
     "ARGS",
-    "DEF", "CALL", "CLASS",
+    "DEF", "CALL", "CLASS", "PIPE",
     "EXCEPTION",
     "STR", "FSTR", "LIST",
     "SETATTR",
@@ -18,7 +19,8 @@ __all__ = [
     "LAMBDA",
     "METHODS",
     "PASS", "CONTINUE", "BREAK",
-    "IMPORT_SECTION", "IMPORT_ALL"
+    "IMPORT_SECTION", "IMPORT_ALL",
+    "FOR", "WHILE", "VAR"
 ]
 
 PASS = "pass"
@@ -36,6 +38,11 @@ def indent(text) -> str:
 class CODE:
     def __str__(self):
         raise NotImplementedError
+
+    def __and__(self, other) -> LINES:
+        left = self.lines if isinstance(self, LINES) else [self]
+        right = other.lines if isinstance(other, LINES) else [other]
+        return LINES(*left, *right)
 
 
 C = Union[CODE, str]
@@ -123,6 +130,9 @@ class LINES(CODE):
         return r
 
         # return "\n".join(map(str, self.lines))
+
+    def while_(self, cond) -> WHILE:
+        return WHILE(cond=cond, body=self)
 
 
 @dataclass
@@ -241,10 +251,13 @@ class FSTR(CODE):
 
 @dataclass
 class LIST(CODE):
-    elements: List[C]
+    elements: Optional[List[C]] = None
 
     def __str__(self):
-        return f"[{', '.join(map(str, self.elements))}]"
+        if self.elements is None:
+            return "[]"
+        else:
+            return f"[{', '.join(map(str, self.elements))}]"
 
 
 @dataclass
@@ -263,8 +276,40 @@ class TUPLE(CODE):
         return f"({', '.join(map(str, self.elements))}{',' if len(self.elements) == 1 else ''})"
 
 
+class _CALLABLE:
+    def call(self, *args, **kwargs) -> CALL:
+        return CALL(self, ARGS(*args, **kwargs))
+
+
+class _NAME_CALLABLE(_CALLABLE):
+    name: str
+
+    def call(self, *args, **kwargs) -> CALL:
+        return CALL(self.name, ARGS(*args, **kwargs))
+
+
+class _PIPABLE:
+    def pipe(self, *args) -> PIPE:
+        return PIPE(self, *args)
+
+    def getattr(self, obj) -> PIPE:
+        return PIPE(self, obj)
+
+
+class VAR(CODE, _NAME_CALLABLE, _PIPABLE):
+    def __init__(self, name: str):
+        assert name.isidentifier()
+        self.name: str = name
+
+    def __str__(self):
+        return self.name
+
+    def set(self, v: Union[CODE, str], t: str = "") -> SETATTR:
+        return SETATTR(k=self.name, v=v, t=t)
+
+
 @dataclass
-class DEF(CODE):
+class DEF(CODE, _NAME_CALLABLE):
     name: str
     args: ARGS
     body: C
@@ -286,16 +331,27 @@ class CLASS(CODE):
 
 @dataclass
 class CALL(CODE):
-    name: str
-    args: ARGS
+    name: Union[str, _CALLABLE]
+    args: Optional[ARGS] = None
 
     def __str__(self):
-        return f"{self.name!s}({self.args!s})"
+        if self.args is None:
+            return f"{self.name!s}()"
+        else:
+            return f"{self.name!s}({self.args!s})"
+
+
+class PIPE(CODE, _PIPABLE, _CALLABLE):
+    def __init__(self, *items):
+        self.items = items
+
+    def __str__(self):
+        return ".".join(map(str, self.items))
 
 
 @dataclass
 class SETATTR(CODE):
-    k: str
+    k: Union[str, VAR]
     v: INLINE
     t: str = ""
 
@@ -313,6 +369,25 @@ class LAMBDA(CODE):
 
     def __str__(self):
         return f"lambda {', '.join(map(str, self.args))}: {self.expr!s}"
+
+
+@dataclass
+class FOR(CODE):
+    args: ARGS
+    iterator: INLINE
+    body: LINES
+
+    def __str__(self):
+        return f"for {self.args!s} in {self.iterator!s}:\n{indent(str(self.body))}"
+
+
+@dataclass
+class WHILE(CODE):
+    cond: INLINE
+    body: LINES
+
+    def __str__(self):
+        return f"while {self.cond!s}:\n{indent(str(self.body))}"
 
 
 class MODULE(CODE):
