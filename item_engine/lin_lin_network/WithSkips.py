@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Generic, Generator
+from typing import Generic
 from dataclasses import replace
 
 from ..constants import POSITION

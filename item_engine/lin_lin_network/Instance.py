@@ -66,7 +66,7 @@ class Instance(Generic[E, F]):
                 yield from self.handle(input_)
 
         if self.current is not None:
-            eof = self.model.input_cls.EOF(self.current.end)
+            eof = self.model.input_cls.EOF(self.current.to)
             yield from self.handle(eof)
 
     def do_return(self, output: F) -> bool:

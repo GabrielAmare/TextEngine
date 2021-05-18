@@ -1,5 +1,5 @@
 from typing import TypeVar
-from ..elements import Element
+from ..base import Element
 
 __all__ = ["E", "F"]
 

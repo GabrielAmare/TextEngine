@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Callable, Tuple, List, Iterator, Generator, Type, Generic
 
-from ..constants import NT_STATE, ACTION, STATE
+from ..constants import ACTION, STATE
 
 from .Instance import Instance
 from .WithSkips import WithSkips
