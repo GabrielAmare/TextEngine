@@ -1,6 +1,6 @@
 from typing import Tuple, Union, List, Optional
 
-from item_engine import Group, Match, Branch, All, INF, INCLUDE, AS
+from item_engine import Group, Match, Branch, All, INF, INCLUDE
 import python_generator as pg
 
 from .base_materials import Symbol, Keyword
@@ -17,39 +17,40 @@ class UNIT:
         self.f: Optional[pg.LAMBDA] = f
 
     def pg_if(self, cls_name: str) -> pg.IF:
+        PARSE_FUNC = pg.VAR("parse")
+        E_CONTENT = pg.VAR("e").GETATTR("content")
+        E_VALUE = pg.VAR("e").GETATTR("value")
+
         if self.f is None:
-            arg = "e.content"
             prem = []
+            arg = E_CONTENT
         else:
-            arg = pg.CALL(
-                name="parse",
-                args=pg.ARGS("e.content")
-            )
-            prem = [pg.SETATTR(k="parse", v=self.f)]
+            prem = [PARSE_FUNC.ASSIGN(self.f)]
+            arg = PARSE_FUNC.CALL(E_CONTENT)
 
         return pg.IF(
-            cond=pg.EQ("e.value", pg.STR(self.n)),
-            body=pg.SCOPE([
+            E_VALUE.EQ(pg.STR(self.n)),
+            pg.BLOCK(
                 *prem,
-                pg.RETURN(pg.CALL(cls_name, pg.ARGS(pg.CALL(self.t.__name__, pg.ARGS(arg)))))
-            ])
+                pg.VAR(cls_name).CALL(
+                    pg.VAR(self.t.__name__).CALL(arg)
+                ).RETURN()
+            )
         )
 
     def pg_class(self, cls_name: str) -> pg.CLASS:
         args = [pg.ARG(k=self.k, t=self.t.__name__)]
         return pg.CLASS(
             name=cls_name,
-            body=pg.SCOPE([
+            block=[
                 pg.METHODS.INIT(*args),
                 pg.METHODS.REPR(*args),
                 pg.DEF(
                     name="__str__",
-                    args=pg.ARGS(pg.ARG(k="self")),
-                    body=pg.SCOPE([
-                        pg.RETURN(f"str(self.{self.k})")
-                    ])
+                    args=pg.SELF,
+                    block=pg.VAR("str").CALL(pg.SELF.GETATTR(self.k)).RETURN()
                 )
-            ])
+            ]
         )
 
 
@@ -58,7 +59,7 @@ class OP:
         self.childs: Tuple[Union[Group, Symbol, Keyword]] = childs
 
         self.matches: List[Match] = []
-        self.args: List[str] = []
+        self.args: List[pg.EXPRESSION] = []
         self.as_str: str = ""
 
         self.n = 0
@@ -68,37 +69,34 @@ class OP:
                 self.as_str += str(child).replace('{', '{{').replace('}', '}}')
             elif isinstance(child, Group):
                 self.matches.append(child.as_(f"c{self.n}"))
-                self.args.append(f"build(e.data['c{self.n}'])")
+                self.args.append(pg.VAR("build").CALL(pg.VAR("e").GETATTR("data").GETITEM(pg.STR(f'c{self.n}'))))
                 self.as_str += f"{{self.c{self.n}!s}}"
                 self.n += 1
             else:
                 raise ValueError(child)
 
     def pg_class(self, cls_name: str):
-        args = [pg.ARG(k=f"c{index}") for index in range(self.n)]
+        args = [pg.ARG(k=f"c{i}") for i in range(self.n)]
         return pg.CLASS(
             name=cls_name,
-            body=pg.SCOPE([
+            block=[
                 pg.METHODS.INIT(*args),
                 pg.METHODS.REPR(*args),
                 pg.DEF(
                     name="__str__",
-                    args=pg.ARGS(pg.ARG(k="self")),
-                    body=pg.SCOPE([
+                    args=pg.SELF,
+                    block=[
                         pg.RETURN(pg.FSTR(self.as_str))
-                    ])
+                    ]
                 )
-            ])
+            ]
         )
 
     def pg_if(self, cls_name: str):
         br_name = f"__{cls_name.upper()}__"
         return pg.IF(
-            cond=pg.EQ("e.value", pg.STR(br_name)),
-            body=pg.RETURN(pg.CALL(
-                name=cls_name,
-                args=pg.ARGS(*self.args)
-            ))
+            pg.VAR("e").GETATTR("value").EQ(pg.STR(br_name)),
+            pg.VAR(cls_name).CALL(*self.args).RETURN()
         )
 
     def branch(self, cls_name: str):
@@ -119,40 +117,34 @@ class ENUM:
     def pg_class(self, cls_name: str) -> pg.CLASS:
         return pg.CLASS(
             name=cls_name,
-            body=pg.SCOPE(
-                [
-                    pg.DEF(
-                        name="__init__",
-                        args=pg.ARGS(pg.ARG(k="self"), pg.ARG(k="*cs")),
-                        body=pg.SCOPE([pg.SETATTR(k=f"self.cs", v="cs")])
-                    ),
-                    pg.DEF(
-                        name="__repr__",
-                        args=pg.ARGS(pg.ARG(k="self")),
-                        body=pg.SCOPE([
-                            pg.RETURN(pg.FSTR("{self.__class__.__name__}({', '.join(map(repr, self.cs))})"))
-                        ])
-                    ),
-                    pg.DEF(
-                        name="__str__",
-                        args=pg.ARGS(pg.ARG(k="self")),
-                        body=pg.SCOPE([
-                            pg.RETURN(
-                                pg.CALL(f"{str(self.s)!r}.join", pg.ARGS(pg.CALL("map", pg.ARGS("str", "self.cs")))))
-                        ])
-                    )
-                ]
-            )
+            block=[
+                pg.DEF(
+                    name="__init__",
+                    args=pg.ARGS(pg.SELF, pg.VAR("cs").AS_ARG),
+                    block=pg.SELF.SETATTR("cs", "cs")
+                ),
+                pg.DEF(
+                    name="__repr__",
+                    args=pg.SELF,
+                    block=pg.FSTR("{self.__class__.__name__}({', '.join(map(repr, self.cs))})").RETURN()
+                ),
+                pg.DEF(
+                    name="__str__",
+                    args=pg.SELF,
+                    block=pg.STR(str(self.s)).GETATTR("join").CALL(
+                        pg.VAR("map").CALL("str", pg.SELF.GETATTR("cs"))
+                    ).RETURN()
+                )
+            ]
         )
 
     def pg_if(self, cls_name: str) -> pg.IF:
         br_name = f"__{cls_name.upper()}__"
         return pg.IF(
-            cond=pg.EQ("e.value", pg.STR(br_name)),
-            body=pg.RETURN(pg.CALL(
-                name=cls_name,
-                args=pg.ARGS("*map(build, e.data['cs'])")
-            ))
+            pg.EQ(pg.VAR("e").GETATTR("value"), pg.STR(br_name)),
+            pg.VAR(cls_name).CALL(
+                pg.VAR("map").CALL("build", pg.VAR("e").GETATTR("data").GETITEM(pg.STR("cs"))).AS_ARG,
+            ).RETURN()
         )
 
     def branch(self, cls_name: str):

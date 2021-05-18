@@ -103,47 +103,45 @@ def gen_operators(**data: Dict[str, Union[UNIT, OP, ENUM]]) -> Tuple[List[Branch
     branches: List[Branch] = []
 
     classes_operators: List[pg.CLASS] = []
-    ifs_operators: List[pg.IF] = []
+    ifs_operators: List[Tuple[pg.EXPRESSION, pg.BLOCK_I]] = []
 
     classes_units: List[pg.CLASS] = []
-    ifs_units: List[pg.IF] = []
+    ifs_units: List[Tuple[pg.EXPRESSION, pg.BLOCK_I]] = []
 
     op_type: Type[Union[OP, UNIT, ENUM]]
 
     for cls_name, obj in data.items():
         if isinstance(obj, UNIT):
             classes_units.append(obj.pg_class(cls_name))
-            ifs_units.append(obj.pg_if(cls_name))
+            if_ = obj.pg_if(cls_name)
+            ifs_units.append((if_.condition, if_.block))
         elif isinstance(obj, (OP, ENUM)):
             branches.append(obj.branch(cls_name))
             classes_operators.append(obj.pg_class(cls_name))
-            ifs_operators.append(obj.pg_if(cls_name))
+            if_ = obj.pg_if(cls_name)
+            ifs_operators.append((if_.condition, if_.block))
         else:
             raise ValueError(obj)
 
-    return branches, pg.MODULE([
-        pg.FROM_IMPORT("item_engine.textbase", pg.ARGS("*")),
+    return branches, pg.MODULE("materials", [
+        pg.IMPORT.FROM("item_engine.textbase", "*"),
         *classes_units,
         *classes_operators,
         pg.DEF(
             name="build",
-            args=pg.ARGS(pg.ARG('e', t='Element')),
-            body=pg.SWITCH(ifs=[
-                pg.IF(
-                    cond=pg.ISINSTANCE('e', t='Lemma'),
-                    body=pg.SWITCH(
-                        ifs=ifs_operators,
-                        default=pg.RAISE(pg.EXCEPTION('e.value'))
+            args=pg.ARG('e', t='Element'),
+            block=pg.SWITCH(
+                [
+                    (
+                        pg.ISINSTANCE('e', t='Lemma'),
+                        pg.SWITCH(ifs_operators, pg.EXCEPTION('e.value').RAISE())
+                    ),
+                    (
+                        pg.ISINSTANCE('e', t='Token'),
+                        pg.SWITCH(ifs_units, pg.EXCEPTION('e.value').RAISE())
                     )
-                ),
-                pg.IF(
-                    cond=pg.ISINSTANCE('e', t='Token'),
-                    body=pg.SWITCH(
-                        ifs=ifs_units,
-                        default=pg.RAISE(pg.EXCEPTION('e.value'))
-                    )
-                )
-            ], default=pg.RAISE(pg.EXCEPTION('e.value'))
+                ],
+                pg.EXCEPTION('e.value').RAISE()
             )
         )
     ])

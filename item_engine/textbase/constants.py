@@ -58,9 +58,6 @@ _POW_INT_ORDS = {ord(k): ord(v) for k, v in _POW_INT_CHARS.items()}
 
 # PARSE FUNCTION FOR POWER INTEGERS
 INT_POW_TO_INT = pg.LAMBDA(
-    args=["content"],
-    expr=pg.CALL(
-        name="content.translate",
-        args=pg.ARGS(pg.DICT(_POW_INT_ORDS))
-    )
+    args="content",
+    expr=pg.VAR("content").GETATTR("translate").CALL(pg.DICT(_POW_INT_ORDS))
 )

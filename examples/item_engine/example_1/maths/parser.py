@@ -1,6 +1,7 @@
 from typing import Iterator, Tuple
 from item_engine import NT_STATE, Element, ACTION, STATE
 
+
 __all__ = ['parser']
 
 
@@ -24,16 +25,8 @@ def parser(value: NT_STATE, item: Element) -> Iterator[Tuple[ACTION, STATE]]:
         elif item.value == 'VAR':
             yield 'as:c0', 9
             yield 'in:cs', 5
-        elif item.value in ('__ADD__', '__SUB__'):
-            yield 'as:c0', 10
-        elif item.value in ('__AND__', '__NOT__'):
-            yield 'as:c0', 11
         elif item.value == '__ATTR__':
             yield 'in:cs', 12
-        elif item.value in ('__DIV__', '__MUL__', '__NEG__'):
-            yield 'as:c0', 13
-        elif item.value in ('__EQ__', '__GE__', '__GT__', '__LE__', '__LT__'):
-            yield 'as:c0', 14
         elif item.value == '__FORALL__':
             yield 'as:c0', 15
         elif item.value == '__OR__':
@@ -43,6 +36,14 @@ def parser(value: NT_STATE, item: Element) -> Iterator[Tuple[ACTION, STATE]]:
             yield 'in:cs', 5
         elif item.value == '__POW__':
             yield 'as:c0', 17
+        elif item.value in ('__ADD__', '__SUB__'):
+            yield 'as:c0', 10
+        elif item.value in ('__AND__', '__NOT__'):
+            yield 'as:c0', 11
+        elif item.value in ('__DIV__', '__MUL__', '__NEG__'):
+            yield 'as:c0', 13
+        elif item.value in ('__EQ__', '__GE__', '__GT__', '__LE__', '__LT__'):
+            yield 'as:c0', 14
         else:
             yield '∉', '!__ADD__|__AND__|__ATTR__|__CONSTRAINT__|__DIV__|__ENUMV__|__EQUATIONS__|__EQ__|__EXISTS__|__FORALL__|__GE__|__GT__|__LE__|__LT__|__MUL__|__NEG__|__NOT__|__OR__|__PAR__|__POW__|__SET__|__SUB__'
     elif value == 1:

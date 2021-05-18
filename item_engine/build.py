@@ -122,10 +122,10 @@ class ActionSelect(Dict[ACTION, TargetSelect]):
             self[action] = target_select = TargetSelect()
         target_select.add_branch(branch)
 
-    def code(self, func: FUNC, formal: bool = False) -> pg.SCOPE:
+    def code(self, func: FUNC, formal: bool = False) -> pg.BLOCK:
         max_priority = max(target_select.priority for target_select in self.values())
         cases = [
-            pg.YIELD(line=f"{action!r}, {value!r}")
+            pg.ARGS(repr(action), repr(value)).YIELD()
             for action, target_select in self.items()
             if target_select.priority == max_priority
             for value in target_select.get_target_states(func)
@@ -137,7 +137,7 @@ class ActionSelect(Dict[ACTION, TargetSelect]):
         if len(cases) == 0:
             return pg.PASS
 
-        return pg.SCOPE(lines=cases)
+        return pg.BLOCK(*cases)
 
     @property
     def targets(self) -> Iterator[BranchSet]:
@@ -179,11 +179,8 @@ class GroupSelect(Dict[Group, ActionSelect]):
     def code(self, func: FUNC, formal: bool = False) -> pg.SWITCH:
         cases = sorted(self.cases, key=lambda item: len(item[0].items))
         return pg.SWITCH(
-            ifs=[
-                pg.IF(
-                    cond=group.condition,
-                    body=action_select.code(func, formal)
-                )
+            cases=[
+                (group.condition, action_select.code(func, formal))
                 for group, action_select in cases
             ],
             default=self.default.code(func, formal) if self.default else None
@@ -193,14 +190,14 @@ class GroupSelect(Dict[Group, ActionSelect]):
 class OriginSelect(Dict[BranchSet, GroupSelect]):
     def code(self, func: FUNC, formal: bool = False) -> pg.SWITCH:
         return pg.SWITCH(
-            ifs=[
-                pg.IF(
-                    cond=pg.EQ("value", repr(func(origin))),
-                    body=group_select.code(func, formal)
+            cases=[
+                (
+                    pg.VAR("value").EQ(func(origin)),
+                    group_select.code(func, formal)
                 )
                 for origin, group_select in self.items()
             ],
-            default=pg.RAISE(pg.EXCEPTION("f'\\nvalue: {value!r}\\nitem: {item!r}'"))
+            default=pg.EXCEPTION("f'\\nvalue: {value!r}\\nitem: {item!r}'").RAISE()
         )
 
 
@@ -270,17 +267,19 @@ class Parser:
 
     @property
     def code(self) -> pg.MODULE:
-        return pg.MODULE(items=[
-            pg.FROM_IMPORT("typing", pg.ARGS("Iterator", "Tuple")),
-            pg.FROM_IMPORT("item_engine", pg.ARGS("NT_STATE", "Element", "ACTION", "STATE")),
-            pg.SETATTR(k="__all__", v=pg.LIST([pg.STR(self.name)])),
-            pg.DEF(
-                name=self.name,
-                args=pg.ARGS("value: NT_STATE", "item: Element"),
-                body=self.origin_select.code(self.get_nt_state, self.formal),
-                type="Iterator[Tuple[ACTION, STATE]]"
-            ),
-        ])
+        return pg.MODULE(
+            self.name,
+            [
+                pg.IMPORT.FROM("typing", pg.ARGS("Iterator", "Tuple")),
+                pg.IMPORT.FROM("item_engine", pg.ARGS("NT_STATE", "Element", "ACTION", "STATE")),
+                pg.VAR("__all__").ASSIGN(pg.LIST([pg.STR(self.name)])),
+                pg.DEF(
+                    name=self.name,
+                    args=pg.ARGS(pg.ARG("value", t="NT_STATE"), pg.ARG("item", t="Element")),
+                    block=self.origin_select.code(self.get_nt_state, self.formal),
+                    t="Iterator[Tuple[ACTION, STATE]]"
+                ),
+            ])
 
     def to_csv(self, fp: str) -> None:
         data = []
@@ -374,43 +373,43 @@ class Engine:
 
         """
 
-        import_section = pg.IMPORT_SECTION()
-        import_section.append("typing", "Iterator")
-        import_section.append("item_engine", pg.IMPORT_ALL)
-
+        imports: List[pg.STATEMENT] = []
         for parser in self.parsers:
-            import_section.append(parser.input_cls.__module__, parser.input_cls.__name__)
-            import_section.append(parser.output_cls.__module__, parser.output_cls.__name__)
-            import_section.append("." + parser.name, parser.name)
+            imports.append(pg.IMPORT.FROM(parser.input_cls.__module__, parser.input_cls.__name__))
+            imports.append(pg.IMPORT.FROM(parser.output_cls.__module__, parser.output_cls.__name__))
+            imports.append(pg.IMPORT.FROM("." + parser.name, parser.name))
 
-        return pg.PACKAGE(name=self.name, modules={
-            '__init__': pg.MODULE(items=[
-                import_section,
-                pg.SETATTR("__all__", pg.LIST([pg.STR("gen_networks")])),
-                pg.DEF(
-                    name="gen_networks",
-                    args=pg.ARGS(*[pg.ARG(f"{parser.name}_cfg", t="dict") for parser in self.parsers]),
-                    type="Iterator[Network]",
-                    body=pg.SCOPE([
-                        pg.YIELD(
-                            pg.CALL(
-                                name="ReflexiveNetwork" if parser.reflexive else "Network",
-                                args=pg.ARGS(
-                                    pg.ARG("function", v=parser.name),
-                                    pg.ARG("input_cls", v=parser.input_cls.__name__),
-                                    pg.ARG("output_cls", v=parser.output_cls.__name__),
-                                    pg.ARG("to_ignore", v=repr(parser.skips)),
-                                    pg.AS_KWARG(f"{parser.name}_cfg")
+        return pg.PACKAGE(
+            self.name,
+            pg.MODULE(
+                '__init__',
+                scope=[
+                    *imports,
+                    pg.IMPORT.FROM("typing", "Iterator"),
+                    pg.IMPORT.FROM("item_engine", "*"),
+                    pg.VAR("__all__").ASSIGN(pg.LIST([pg.STR("gen_networks")])),
+                    pg.DEF(
+                        name="gen_networks",
+                        args=pg.ARGS(
+                            *[pg.VAR(f"{parser.name}_cfg").ARG(t="dict") for parser in self.parsers]),
+                        t="Iterator[Network]",
+                        block=[
+                            pg.YIELD(
+                                pg.VAR("ReflexiveNetwork" if parser.reflexive else "Network").CALL(
+                                    pg.VAR("function").ARG(pg.VAR(parser.name)),
+                                    pg.VAR("input_cls").ARG(pg.VAR(parser.input_cls.__name__)),
+                                    pg.VAR("output_cls").ARG(pg.VAR(parser.output_cls.__name__)),
+                                    pg.VAR("to_ignore").ARG(pg.LIST(list(map(repr, parser.skips)))),
+                                    pg.VAR(f"{parser.name}_cfg").AS_KWARG
                                 )
                             )
-                        )
-                        for parser in self.parsers
-                    ])
-                )
-            ]),
-            **({} if self.operators is None else {'materials': self.operators}),
-            **{parser.name: parser.code for parser in self.parsers}
-        })
+                            for parser in self.parsers
+                        ]
+                    )
+                ]),
+            *([] if self.operators is None else [self.operators]),
+            *[parser.code for parser in self.parsers]
+        )
 
     def build(self, root: str = os.curdir, allow_overwrite: bool = False) -> None:
         self.code.save(root=root, allow_overwrite=allow_overwrite)
