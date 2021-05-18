@@ -100,7 +100,10 @@ class CanBeSplited:
             Split the rules by returning a Match followed by the remaining Rule after the Match
         """
         if isinstance(self, Empty):
-            yield Match(group=Group.always(), action=EXCLUDE), self
+            if self.valid:
+                yield Match(group=Group.always(), action=EXCLUDE), self
+            else:
+                yield Match(group=Group.never(), action=EXCLUDE), self
         elif isinstance(self, Optional):
             for first, after in self.rule.splited:
                 yield first, after
@@ -116,14 +119,14 @@ class CanBeSplited:
                 for first, after in rule.splited:
                     yield first, after
         elif isinstance(self, Match):
-            yield self, Empty(valid=True)
-            yield Match(~self.group, EXCLUDE), Empty(valid=False)
+            yield self, VALID
+            yield Match(~self.group, EXCLUDE), ERROR
         elif isinstance(self, Branch):
             for first, after in self.rule.splited:
                 yield first, after
 
             if self.rule.is_skipable:
-                yield Match(group=Group.always(), action=EXCLUDE), Empty(valid=True)
+                yield Match(group=Group.always(), action=EXCLUDE), VALID
         else:
             raise ValueError(self)
 
@@ -200,6 +203,10 @@ class Empty(Rule):
     valid: bool
 
 
+VALID = Empty(True)
+ERROR = Empty(False)
+
+
 @dataclass(frozen=True, order=True)
 class RuleUnit(Rule):
     rule: Rule
@@ -222,12 +229,14 @@ class RuleList(Rule):
 
 @dataclass(frozen=True, order=True)
 class Optional(RuleUnit):
-    pass
+    def __str__(self):
+        return f"?[ {self.rule!s} ]"
 
 
 @dataclass(frozen=True, order=True)
 class Repeat(RuleUnit):
-    pass
+    def __str__(self):
+        return f"*[ {self.rule!s} ]"
 
 
 @dataclass(frozen=True, order=True)
@@ -236,17 +245,21 @@ class All(RuleList):
     def decompose(self) -> Iterator[Tuple[Rule, Rule]]:
         for index, rule in enumerate(self.rules):
             if index + 1 < len(self.rules):
-                yield rule, reduce(and_, self.rules[1:])
+                yield rule, reduce(and_, self.rules[index + 1:])
             else:
-                yield rule, Empty(valid=True)
+                yield rule, VALID
 
             if not rule.is_skipable:
                 break
 
+    def __str__(self):
+        return " & ".join(map(str, self.rules))
+
 
 @dataclass(frozen=True, order=True)
 class Any(RuleList):
-    pass
+    def __str__(self):
+        return " | ".join(map(str, self.rules))
 
 
 ########################################################################################################################
@@ -259,6 +272,9 @@ class Match(Rule):
     """When an item is validated by the ``group``, the action will be done"""
     group: Group
     action: ACTION = ""
+
+    def __str__(self):
+        return f"{self.group!s}({self.action!s})"
 
 
 __all__ += ["Item", "Group"]
@@ -315,8 +331,7 @@ class Group(GenericItemSet[E], Generic[E], ItemInterface):
             else:
                 return pg.IN
 
-    @property
-    def condition(self) -> pg.CONDITION:
+    def condition(self, item: pg.VAR) -> pg.CONDITION:
         raise NotImplementedError
 
 
@@ -340,6 +355,9 @@ class Branch(GenericItem, HasAlphabet, HasState, CanBeSplited):
 
     def new_rule(self, rule: Rule) -> Branch:
         return replace(self, rule=rule)
+
+    def __str__(self):
+        return f"{self.name!s}[{self.priority}] : {self.rule!s}"
 
 
 class BranchSet(GenericItemSet[Branch], HasAlphabet, HasState):

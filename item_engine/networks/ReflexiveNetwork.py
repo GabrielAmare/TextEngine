@@ -111,7 +111,7 @@ class ReflexiveNetwork(Generic[INPUT, OUTPUT]):
 
     def generate_from(self, o: OUTPUT, i: INPUT) -> Iterator[OUTPUT]:
         """Return the new outputs generated from the ``origin`` output and a ``target`` input"""
-        for action, value in self.function(o.value, i):
+        for action, value in self.function(o, i):
             yield o.develop(action, value, i)
 
     def new_cursor(self, index: INDEX) -> None:

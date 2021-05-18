@@ -10,12 +10,13 @@ __all__ = ["CharI", "CharG"]
 class CharG(Group):
     @property
     def items_str(self) -> str:
-        return repr(''.join(sorted(repr(str(item))[1:-1] for item in self.items)))
+        s = ''.join(sorted(repr(str(item))[1:-1] for item in self.items))
+        s = s.replace('0123456789', r'\d')
+        return repr(s).replace('\\\\', '\\')
 
-    @property
-    def condition(self) -> pg.CONDITION:
+    def condition(self, item: pg.VAR) -> pg.CONDITION:
         expr = ''.join(sorted(map(str, self.items)))
-        return self.code_factory("item.value", repr(expr))
+        return self.code_factory(item.GETATTR("value"), repr(expr))
 
     def match(self, action: str) -> Match:
         return Match(self, action)

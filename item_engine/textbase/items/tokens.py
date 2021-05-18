@@ -13,11 +13,10 @@ class TokenG(Group):
     def items_str(self) -> str:
         return '\n'.join(map(repr, sorted([item.name for item in self.items])))
 
-    @property
-    def condition(self) -> pg.CONDITION:
-        items = sorted(map(str, self.items))
+    def condition(self, item: pg.VAR) -> pg.CONDITION:
+        items = tuple(sorted(map(str, self.items)))
         grp = items[0] if len(self.items) == 1 else pg.TUPLE(items)
-        return self.code_factory("item.value", grp)
+        return self.code_factory(item.GETATTR("value"), grp)
 
     def match(self, action: str) -> Match:
         return Match(self, action)

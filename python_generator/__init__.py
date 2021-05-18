@@ -309,6 +309,18 @@ class EXPRESSION:
     def NOT_IN(self, other: EXPRESSION_I) -> NOT_IN:
         return NOT_IN(self, other)
 
+    def IS(self, other: EXPRESSION_I) -> IS:
+        return IS(self, other)
+
+    def IS_NOT(self, other: EXPRESSION_I) -> IS_NOT:
+        return IS_NOT(self, other)
+
+    def AND(self, other: EXPRESSION_I) -> AND:
+        return AND(self, other)
+
+    def OR(self, other: EXPRESSION_I) -> OR:
+        return OR(self, other)
+
 
 class CONDITION(EXPRESSION):
     def IF(self, block: BLOCK = None, alt: Union[ELSE, ELIF] = None) -> IF:
@@ -321,6 +333,22 @@ class CONDITION(EXPRESSION):
         return WHILE(self, block, alt)
 
 
+class AND(CONDITION):
+    def __init__(self, *terms: EXPRESSION_I):
+        self.terms: List[EXPRESSION_O] = list(map(EXPRESSION.parse, terms))
+
+    def __str__(self):
+        return " and ".join(map(str, self.terms))
+
+
+class OR(CONDITION):
+    def __init__(self, *terms: EXPRESSION_I):
+        self.terms: List[EXPRESSION_O] = list(map(EXPRESSION.parse, terms))
+
+    def __str__(self):
+        return " or ".join(map(str, self.terms))
+
+
 class LAMBDA(EXPRESSION):
     def __init__(self, args: ARGS_I = None, expr: EXPRESSION = None):
         self.args: ARGS_O = ARGS.parse(args)
@@ -330,7 +358,7 @@ class LAMBDA(EXPRESSION):
         return f"lambda {self.args!s}: {self.expr!s}"
 
 
-__all__ += ["EXPRESSION", "CONDITION"]
+__all__ += ["EXPRESSION", "CONDITION", "AND", "OR"]
 
 
 class OBJECT(EXPRESSION):
@@ -359,6 +387,10 @@ class OBJECT(EXPRESSION):
     @property
     def AS_KWARG(self) -> AS_KWARG:
         return AS_KWARG(self)
+
+    @property
+    def TYPE_OF(self) -> CALL:
+        return VAR("type").CALL(self)
 
 
 class TYPED_OBJECT(OBJECT):
@@ -404,12 +436,33 @@ class VAR(OBJECT):
             return obj
         elif isinstance(obj, str):
             return cls(obj)
+        # elif isinstance(obj, ARG):
+        #     return obj.k
         else:
             raise TypeError(type(obj))
 
     def __init__(self, name: str):
         # assert all(sname.isidentifier() for sname in name.split('.')), repr(name)
         self.name: str = name
+
+    def __hash__(self):
+        return hash((type(self), self.name))
+
+    def __eq__(self, other: Union[VAR, str]) -> bool:
+        if isinstance(other, VAR):
+            return self.name == other.name
+        elif isinstance(other, str):
+            return self.name == other
+        else:
+            raise NotImplementedError
+
+    def __lt__(self, other):
+        if isinstance(other, VAR):
+            return self.name < other.name
+        elif isinstance(other, str):
+            return self.name < other
+        else:
+            raise NotImplementedError
 
     def __str__(self):
         return self.name
@@ -551,7 +604,15 @@ class NOT_IN(COMPARISON):
     symbol = 'not in'
 
 
-__all__ += ["COMPARISON", "EQ", "NE", "LT", "LE", "GT", "GE", "IN", "NOT_IN"]
+class IS(COMPARISON):
+    symbol = 'is'
+
+
+class IS_NOT(COMPARISON):
+    symbol = 'is not'
+
+
+__all__ += ["COMPARISON", "EQ", "NE", "LT", "LE", "GT", "GE", "IN", "NOT_IN", "IS", "IS_NOT"]
 
 
 class ARGS:
@@ -563,6 +624,8 @@ class ARGS:
             return obj
         elif isinstance(obj, ARG):
             return ARGS(obj)
+        elif hasattr(obj, "__iter__"):
+            return ARGS(*obj)
         else:
             return cls(VAR.parse(obj))
 
@@ -588,6 +651,15 @@ class ARG:
 
         self.to: TYPED_OBJECT = TYPED_OBJECT(self.k, self.t)
 
+    def __eq__(self, other):
+        return type(self) is type(other) and self.k == other.k and self.v == other.v and self.t == other.t
+
+    def __lt__(self, other):
+        if type(self) is type(other):
+            return (self.k, self.v, self.t) < (other.k, other.v, other.t)
+        else:
+            raise NotImplementedError
+
     def __str__(self):
         return f"{self.to}" if self.v is None else f"{self.to}={self.v}"
 
@@ -599,10 +671,17 @@ class IMPORT(STATEMENT):
     def __str__(self):
         return f"import {self.name!s}"
 
-    class FROM(STATEMENT):
-        def __init__(self, name: VAR_I, args: ARGS_I = None):
+    class ALL(STATEMENT):
+        def __init__(self, name: VAR_I):
             self.name: VAR_O = VAR.parse(name)
-            self.args: ARGS_O = "*" if args == "*" else ARGS.parse(args)
+
+        def __str__(self):
+            return f"from {self.name!s} import *"
+
+    class FROM(STATEMENT):
+        def __init__(self, name: VAR_I, args: IMPORT_FROM_ARGS_I = None):
+            self.name: VAR_O = VAR.parse(name)
+            self.args: IMPORT_FROM_ARGS_O = IMPORT.FROM.ARGS.parse(args)
 
         def __str__(self):
             return f"from {self.name!s} import {self.args!s}"
@@ -621,6 +700,18 @@ class IMPORT(STATEMENT):
                 self.name: VAR_O = VAR.parse(name)
                 self.as_: Optional[VAR_O] = None if as_ is None else VAR.parse(as_)
 
+            def __hash__(self):
+                return hash((type(self), self.name, self.as_))
+
+            def __eq__(self, other):
+                return type(self) is type(other) and self.name == other.name and self.as_ == other.as_
+
+            def __lt__(self, other):
+                if type(self) is type(other):
+                    return (self.name, self.as_) < (other.name, other.as_)
+                else:
+                    raise NotImplementedError
+
             def __str__(self):
                 return f"{self.name!s}" if self.as_ is None else f"{self.name!s} as {self.as_}"
 
@@ -637,6 +728,9 @@ class IMPORT(STATEMENT):
             def __init__(self, *args: IMPORT_FROM_ARG_I):
                 self.args: List[IMPORT_FROM_ARG_O] = list(map(IMPORT.FROM.ARG.parse, args))
 
+            def __iter__(self):
+                return iter(self.args)
+
             def __str__(self):
                 return ", ".join(map(str, self.args))
 
@@ -651,6 +745,31 @@ class MODULE:
             This method will search in the whole module for IMPORT|IMPORT.FROM statements and put them at the start of the module
         """
         import_statements = self.scope.extract_imports()
+
+        imports: List[VAR_O] = []
+        imports_all: List[VAR_O] = []
+        imports_from: Dict[VAR_O, List[IMPORT_FROM_ARG_O]] = {}
+
+        for statement in import_statements:
+            if isinstance(statement, IMPORT):
+                imports.append(statement.name)
+            elif isinstance(statement, IMPORT.ALL):
+                imports_all.append(statement.name)
+            elif isinstance(statement, IMPORT.FROM):
+                if statement.name in imports_from:
+                    imports_from[statement.name].extend(statement.args)
+                else:
+                    imports_from[statement.name] = list(statement.args)
+            else:
+                raise TypeError(type(statement))
+
+        import_statements = [
+            *(IMPORT(name) for name in sorted(imports)),
+            *(IMPORT.ALL(name) for name in sorted(imports_all)),
+            *(IMPORT.FROM(name, sorted(set(args))) for name, args in sorted(imports_from.items()) if
+              name not in imports_all)
+        ]
+
         self.scope.statements = [*import_statements, *self.scope.statements]
 
     def __str__(self):
@@ -680,6 +799,8 @@ class MODULE:
 
         if os.path.exists(fp) and not allow_overwrite:
             raise FileExistsError(fp)
+
+        self.simplify_imports()
 
         with open(fp, mode="w", encoding="utf-8") as file:
             file.write(str(self))
@@ -760,6 +881,9 @@ def EXCEPTION(e) -> CALL:
 
 
 def SWITCH(cases: List[Tuple[EXPRESSION, BLOCK_I]], default: BLOCK_I = None) -> IF:
+    if not cases:
+        return BLOCK()
+
     current = default
     for condition, block in reversed(cases[1:]):
         current = ELIF(condition=condition, block=block, alt=current)
@@ -840,7 +964,7 @@ BLOCK_O = BLOCK
 VAR_I = Union[str, VAR]
 VAR_O = VAR
 
-ARGS_I = Optional[Union[ARGS, ARG, VAR_I]]
+ARGS_I = Optional[Union[ARGS, ARG, Iterable[Union[ARG, VAR_I]], VAR_I]]
 ARGS_O = Optional[ARGS]
 
 TYPE_I = Optional[Union[TYPE, type, CLASS, VAR_I]]

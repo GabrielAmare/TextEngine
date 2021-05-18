@@ -1,183 +1,179 @@
-from typing import Iterator, Tuple
-from item_engine import NT_STATE, Element, ACTION, STATE
+from item_engine import ACTION, STATE
+from item_engine.textbase.elements import Char, Token
+from typing import Tuple
 
 
 __all__ = ['lexer']
 
 
-def lexer(value: NT_STATE, item: Element) -> Iterator[Tuple[ACTION, STATE]]:
-    if value == 0:
+def lexer(current: Token, item: Char) -> Tuple[ACTION, STATE]:
+    if current.value == 0:
         if item.value == '\n':
-            yield '∈', 2
+            return '∈', 2
         elif item.value == '!':
-            yield '∈', 'EXC'
+            return '∈', 'EXC'
         elif item.value == '&':
-            yield '∈', 'AMPS'
+            return '∈', 'AMPS'
         elif item.value == '(':
-            yield '∈', 'LP'
+            return '∈', 'LP'
         elif item.value == ')':
-            yield '∈', 'RP'
+            return '∈', 'RP'
         elif item.value == '*':
-            yield '∈', 'STAR'
+            return '∈', 'STAR'
         elif item.value == '+':
-            yield '∈', 'PLUS'
+            return '∈', 'PLUS'
         elif item.value == ',':
-            yield '∈', 'COMMA'
+            return '∈', 'COMMA'
         elif item.value == '-':
-            yield '∈', 'DASH'
+            return '∈', 'DASH'
         elif item.value == '.':
-            yield '∈', 3
+            return '∈', 3
         elif item.value == '/':
-            yield '∈', 'SLASH'
+            return '∈', 'SLASH'
         elif item.value == '<':
-            yield '∈', 5
+            return '∈', 5
         elif item.value == '=':
-            yield '∈', 6
+            return '∈', 6
         elif item.value == '>':
-            yield '∈', 7
+            return '∈', 7
         elif item.value == '^':
-            yield '∈', 'HAT'
+            return '∈', 'HAT'
         elif item.value == 'a':
-            yield '∈', 9
+            return '∈', 9
         elif item.value == 'n':
-            yield '∈', 10
+            return '∈', 10
         elif item.value == 'o':
-            yield '∈', 11
+            return '∈', 11
         elif item.value == '{':
-            yield '∈', 'LS'
+            return '∈', 'LS'
         elif item.value == '|':
-            yield '∈', 'VBAR'
+            return '∈', 'VBAR'
         elif item.value == '}':
-            yield '∈', 'RS'
+            return '∈', 'RS'
         elif item.value == '∀':
-            yield '∈', 'FORALL'
+            return '∈', 'FORALL'
         elif item.value == '∃':
-            yield '∈', 'EXIST'
+            return '∈', 'EXIST'
         elif item.value == '∈':
-            yield '∈', 'ISIN'
+            return '∈', 'ISIN'
         elif item.value == '∉':
-            yield '∈', 'NOTIN'
+            return '∈', 'NOTIN'
         elif item.value in '\t ':
-            yield '∈', 1
+            return '∈', 1
         elif item.value in '0123456789':
-            yield '∈', 4
+            return '∈', 4
         elif item.value in '²³¹⁰⁴⁵⁶⁷⁸⁹':
-            yield '∈', 12
+            return '∈', 12
         elif item.value in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_bcdefghijklmpqrstuvwxyz':
-            yield '∈', 8
+            return '∈', 8
         else:
-            yield '∉', '!KW_AND|KW_NOT|KW_OR'
-    elif value == 1:
+            return '∉', '!KW_AND|KW_NOT'
+    elif current.value == 1:
         if item.value in '\t ':
-            yield '∈', 1
+            return '∈', 1
         else:
-            yield '∉', 'WHITESPACE'
-    elif value == 2:
+            return '∉', 'WHITESPACE'
+    elif current.value == 2:
         if item.value == '\n':
-            yield '∈', 13
+            return '∈', 13
         else:
-            yield '∉', 'NEWLINE'
-    elif value == 3:
+            return '∉', 'NEWLINE'
+    elif current.value == 3:
         if item.value in '0123456789':
-            yield '∈', 14
+            return '∈', 14
         else:
-            yield '∉', '!FLOAT'
-    elif value == 4:
+            return '∉', '!FLOAT'
+    elif current.value == 4:
         if item.value == '.':
-            yield '∈', 15
+            return '∈', 14
         elif item.value in '0123456789':
-            yield '∈', 4
+            return '∈', 4
         else:
-            yield '∉', 'INT'
-    elif value == 5:
+            return '∉', 'INT'
+    elif current.value == 5:
         if item.value == '=':
-            yield '∈', 'LV_EQUAL'
+            return '∉', 'LV'
         else:
-            yield '∉', 'LV'
-    elif value == 6:
+            return '∉', 'LV'
+    elif current.value == 6:
         if item.value == '=':
-            yield '∈', 'EQUAL_EQUAL'
+            return '∉', 'EQUAL'
         else:
-            yield '∉', 'EQUAL'
-    elif value == 7:
+            return '∉', 'EQUAL'
+    elif current.value == 7:
         if item.value == '=':
-            yield '∈', 'RV_EQUAL'
+            return '∉', 'RV'
         else:
-            yield '∉', 'RV'
-    elif value == 8:
+            return '∉', 'RV'
+    elif current.value == 8:
         if item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz':
-            yield '∈', 8
+            return '∈', 8
         else:
-            yield '∉', 'VAR'
-    elif value == 9:
+            return '∉', 'VAR'
+    elif current.value == 9:
         if item.value == 'n':
-            yield '∈', 16
+            return '∈', 15
         elif item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmopqrstuvwxyz':
-            yield '∈', 8
+            return '∈', 8
         else:
-            yield '∉', 'VAR'
-    elif value == 10:
+            return '∉', 'VAR'
+    elif current.value == 10:
         if item.value == 'o':
-            yield '∈', 17
+            return '∈', 16
         elif item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnpqrstuvwxyz':
-            yield '∈', 8
+            return '∈', 8
         else:
-            yield '∉', 'VAR'
-    elif value == 11:
+            return '∉', 'VAR'
+    elif current.value == 11:
         if item.value == 'r':
-            yield '∈', 18
+            return '∈', 17
         elif item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqstuvwxyz':
-            yield '∈', 8
+            return '∈', 8
         else:
-            yield '∉', 'VAR'
-    elif value == 12:
+            return '∉', 'VAR'
+    elif current.value == 12:
         if item.value in '²³¹⁰⁴⁵⁶⁷⁸⁹':
-            yield '∈', 12
+            return '∈', 12
         else:
-            yield '∉', 'INT_POW'
-    elif value == 13:
+            return '∉', 'INT_POW'
+    elif current.value == 13:
         if item.value == '\n':
-            yield '∈', 13
+            return '∈', 13
         else:
-            yield '∉', 'NEWLINE'
-    elif value == 14:
+            return '∉', 'NEWLINE'
+    elif current.value == 14:
         if item.value in '0123456789':
-            yield '∈', 14
+            return '∈', 14
         else:
-            yield '∉', 'FLOAT'
-    elif value == 15:
-        if item.value == '.':
-            yield '∈', 14
-        else:
-            yield '∉', '!FLOAT'
-    elif value == 16:
+            return '∉', 'FLOAT'
+    elif current.value == 15:
         if item.value == 'd':
-            yield '∈', 19
+            return '∈', 18
         elif item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcefghijklmnopqrstuvwxyz':
-            yield '∈', 8
+            return '∈', 8
         else:
-            yield '∉', 'VAR'
-    elif value == 17:
+            return '∉', 'VAR'
+    elif current.value == 16:
         if item.value == 't':
-            yield '∈', 20
+            return '∈', 19
         elif item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrsuvwxyz':
-            yield '∈', 8
+            return '∈', 8
         else:
-            yield '∉', 'VAR'
-    elif value == 18:
+            return '∉', 'VAR'
+    elif current.value == 17:
         if item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz':
-            yield '∈', 8
+            return '∈', 8
         else:
-            yield '∉', 'KW_OR'
-    elif value == 19:
+            return '∉', 'KW_OR'
+    elif current.value == 18:
         if item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz':
-            yield '∈', 8
+            return '∈', 8
         else:
-            yield '∉', 'KW_AND'
-    elif value == 20:
+            return '∉', 'KW_AND'
+    elif current.value == 19:
         if item.value in '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz':
-            yield '∈', 8
+            return '∈', 8
         else:
-            yield '∉', 'KW_NOT'
+            return '∉', 'KW_NOT'
     else:
-        raise Exception(f'\nvalue: {value!r}\nitem: {item!r}')
+        raise Exception(f'value = {current.value!r}')

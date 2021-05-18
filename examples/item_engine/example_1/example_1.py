@@ -20,8 +20,7 @@ lexer, kws, sym = MakeLexer(
         VAR=alpha & alphanum.repeat(0, INF),
         INT=digits.repeat(1, INF),
         INT_POW=digits_pow.repeat(1, INF),
-        FLOAT=digits.repeat(1, INF) & dot & digits.repeat(0, INF)
-              | dot & digits.repeat(1, INF),
+        FLOAT=digits.repeat(1, INF) & dot & digits.repeat(0, INF) | dot & digits.repeat(1, INF),
     )
 
 )
@@ -44,41 +43,42 @@ grp = GroupMaker({
 
 parser, operators = MakeParser(
     operators=dict(
-        ForAll=OP(sym["∀"], grp["VAR"], sym['∈'], grp["VAR"]),
-        Exists=OP(sym["∃"], grp["VAR"], sym['∈'], grp["VAR"]),
-        Constraint=OP(grp["__FORALL__"], sym[','], grp["__EXISTS__"], sym['|'], grp["or"]),
-
-        EnumV=ENUM(grp["unit"], sym[","]),
-        Set=OP(sym['{'], grp["__ENUMV__"], sym['}']),
-
-        Var=UNIT(n="VAR", k="name", t=str),
-        Int=UNIT(n="INT", k="value", t=int),
-        IntPow=UNIT(n="INT_POW", k="value", t=int, f=INT_POW_TO_INT),
-
-        Pow=OP(grp["power"], sym["^"], grp["unit"]),
-
-        Neg=OP(sym["-"], grp["neg"]),
-
-        Mul=OP(grp["term"], sym["*"], grp["neg"]),
-        Div=OP(grp["term"], sym["/"], grp["neg"]),
-
-        Add=OP(grp["expr"], sym["+"], grp["term"]),
-        Sub=OP(grp["expr"], sym["-"], grp["term"]),
-
-        Eq=OP(grp["comp"], sym["=="], grp["expr"]),
-        Lt=OP(grp["comp"], sym["<"], grp["expr"]),
-        Le=OP(grp["comp"], sym["<="], grp["expr"]),
-        Gt=OP(grp["comp"], sym[">"], grp["expr"]),
-        Ge=OP(grp["comp"], sym[">="], grp["expr"]),
-
-        Not=OP(kws["NOT"], grp["not"]),
-        And=OP(grp["and"], kws["AND"], grp["not"]),
-        Or=OP(grp["or"], kws["OR"], grp["and"]),
-
-        Attr=OP(grp["VAR"], sym["="], grp["or"]),
-        Par=OP(sym["("], grp["or"], sym[")"]),
-
-        Equations=ENUM(grp["__ATTR__"], sym["\n"]),
+        # ForAll=OP(sym["∀"], grp["VAR"], sym['∈'], grp["VAR"]),
+        # Exists=OP(sym["∃"], grp["VAR"], sym['∈'], grp["VAR"]),
+        # Constraint=OP(grp["__FORALL__"], sym[','], grp["__EXISTS__"], sym['|'], grp["or"]),
+        #
+        # EnumV=ENUM(grp["unit"], sym[","]),
+        # Set=OP(sym['{'], grp["__ENUMV__"], sym['}']),
+        #
+        # Var=UNIT(n="VAR", k="name", t=str),
+        # Int=UNIT(n="INT", k="value", t=int),
+        # Float=UNIT(n="FLOAT", k="value", t=float),
+        # IntPow=UNIT(n="INT_POW", k="value", t=int, f=INT_POW_TO_INT),
+        #
+        # Pow=OP(grp["power"], sym["^"], grp["unit"]),
+        #
+        # Neg=OP(sym["-"], grp["neg"]),
+        #
+        # Mul=OP(grp["term"], sym["*"], grp["neg"]),
+        # Div=OP(grp["term"], sym["/"], grp["neg"]),
+        #
+        # Add=OP(grp["expr"], sym["+"], grp["term"]),
+        # Sub=OP(grp["expr"], sym["-"], grp["term"]),
+        #
+        # Eq=OP(grp["comp"], sym["=="], grp["expr"]),
+        # Lt=OP(grp["comp"], sym["<"], grp["expr"]),
+        # Le=OP(grp["comp"], sym["<="], grp["expr"]),
+        # Gt=OP(grp["comp"], sym[">"], grp["expr"]),
+        # Ge=OP(grp["comp"], sym[">="], grp["expr"]),
+        #
+        # Not=OP(kws["NOT"], grp["not"]),
+        # And=OP(grp["and"], kws["AND"], grp["not"]),
+        # Or=OP(grp["or"], kws["OR"], grp["and"]),
+        #
+        # Attr=OP(grp["VAR"], sym["="], grp["or"]),
+        # Par=OP(sym["("], grp["or"], sym[")"]),
+        #
+        # Equations=ENUM(grp["__ATTR__"], sym["\n"]),
     ),
     branches=dict(
         __MUL__=grp["INT"].as_("c0") & grp["VAR"].as_("c1"),
@@ -111,10 +111,13 @@ engine = Engine(
     operators=operators
 )
 
-for parser in engine.parsers:
-    parser.graph.display()
-    parser.to_csv(parser.name)
+engine.parsers[0].graph.display()
 
+# for parser in engine.parsers:
+#     parser.graph.display()
+#     parser.to_csv(parser.name)
+#
+# print(engine.data().code())
 engine.build(
     allow_overwrite=True
 )
@@ -174,44 +177,79 @@ def parse_text(text: str):
                 yield build(final)
 
 
-# characters = make_characters("x := y + 2\ny := x / 5 - y")
-characters = make_characters("∀ x ∈ X, ∃ y ∈ Y | x + y == 5 and x * y == 6")
-# characters = make_characters("{1, 2, 3, x}")
-lexer.feed_iterator(characters)
-parser.feed_network(lexer)
-
-for item in parser:
-    pass
+def test(text, expected):
+    result = list(parse_text(text))
+    assert expected == result, f"\nexpected: {expected}\nresult: {result}"
 
 
-def get_content(o: Lemma) -> str:
-    return '\n'.join(
-        '\n'.join(
-            f"{key!s}[{index}]: {item.value} = {str(item) if isinstance(item, Token) else '...'}"
-            for index, item in enumerate(val)
-        )
-        if isinstance(val, list) else
-        f"{key!s}: {val.value} = {str(val) if isinstance(val, Token) else '...'}"
-        for key, val in o.data.items()
-    )
+test("16x", [Mul(Int(16), Var('x'))])
+test("16*x", [Mul(Int(16), Var('x'))])
+test("16 * x", [Mul(Int(16), Var('x'))])
+test("1+2+3", [Add(Add(Int(1), Int(2)), Int(3))])
+test("1*2+3", [Add(Mul(Int(1), Int(2)), Int(3))])
+test("1+2*3", [Add(Int(1), Mul(Int(2), Int(3)))])
+test("1+2-3", [Sub(Add(Int(1), Int(2)), Int(3))])
+test("--x", [Neg(Neg(Var('x')))])
+test("1--2", [Sub(Int(1), Neg(Int(2)))])
+test("x=2", [Attr(Var('x'), Int(2))])
+test("x=y/5", [Attr(Var('x'), Div(Var('y'), Int(5)))])
 
+test("12x-3", [Sub(Mul(Int(12), Var('x')), Int(3))])
 
-print(lexer.terminal_table(content=str))
-print(parser.terminal_table(content=get_content))
+# added float
+test("1.", [Float(1.)])
+test(".1", [Float(.1)])
+test("1.1", [Float(1.1)])
+test("253.6", [Float(253.6)])
+test("0.07", [Float(0.07)])
 
-positions = parser.pr.positions
-mn, mx = min(positions), max(positions)
+test(
+    "∀ x ∈ X, ∃ y ∈ Y | x + y == 5 and x * y == 6",
+    [Constraint(
+        ForAll(Var('x'), Var('X')),
+        Exists(Var('y'), Var('Y')),
+        And(Eq(Add(Var('x'), Var('y')), Int(5)), Eq(Mul(Var('x'), Var('y')), Int(6)))
+    )]
+)
 
-for final in parser.terminals:
-    if parser.pr.get(final.at) == mn:
-        if parser.pr.get(final.to) == mx:
-            print()
-            print(build(final))
-            print()
-            print(repr(build(final)))
-            print()
-
-print(mn, mx)
+# # characters = make_characters("x := y + 2\ny := x / 5 - y")
+# characters = make_characters("∀ x ∈ X, ∃ y ∈ Y | x + y == 5 and x * y == 6")
+# # characters = make_characters("{1, 2, 3, x}")
+# lexer.feed_iterator(characters)
+# parser.feed_network(lexer)
+#
+# for item in parser:
+#     pass
+#
+#
+# def get_content(o: Lemma) -> str:
+#     return '\n'.join(
+#         '\n'.join(
+#             f"{key!s}[{index}]: {item.value} = {str(item) if isinstance(item, Token) else '...'}"
+#             for index, item in enumerate(val)
+#         )
+#         if isinstance(val, list) else
+#         f"{key!s}: {val.value} = {str(val) if isinstance(val, Token) else '...'}"
+#         for key, val in o.data.items()
+#     )
+#
+#
+# print(lexer.terminal_table(content=str))
+# print(parser.terminal_table(content=get_content))
+#
+# positions = parser.pr.positions
+# mn, mx = min(positions), max(positions)
+#
+# for final in parser.terminals:
+#     if parser.pr.get(final.at) == mn:
+#         if parser.pr.get(final.to) == mx:
+#             print()
+#             print(build(final))
+#             print()
+#             print(repr(build(final)))
+#             print()
+#
+# print(mn, mx)
 
 import os
 

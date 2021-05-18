@@ -4,6 +4,9 @@ from .items import TokenI, TokenG
 
 __all__ = ["Symbol", "Keyword", "Helper"]
 
+SYMBOL_PRIORITY = 100
+KEYWORD_PRIORITY = 200
+
 
 class Helper:
     branch: Branch
@@ -27,7 +30,7 @@ class Symbol(Helper):
         self.branch: Branch = Branch(
             name=self.name,
             rule=string(self.expr),
-            priority=100 + len(self.expr)
+            priority=SYMBOL_PRIORITY + len(self.expr)
         )
         self.tokenI: TokenI = TokenI(name=self.name)
         self.tokenG: TokenG = self.tokenI.as_group
@@ -39,7 +42,7 @@ class Keyword(Helper):
         self.branch: Branch = Branch(
             name=f"KW_{self.name}",
             rule=string(self.expr),
-            priority=200
+            priority=KEYWORD_PRIORITY + len(self.expr)
         )
         self.tokenI: TokenI = TokenI(name=f"KW_{self.name}")
         self.tokenG: TokenG = self.tokenI.as_group

@@ -1,11 +1,8 @@
-from item_engine.textbase.elements import Char
-from item_engine.textbase.elements import Token
 from .lexer import lexer
-from item_engine.textbase.elements import Token
-from item_engine.textbase.elements import Lemma
 from .parser import parser
-from typing import Iterator
 from item_engine import *
+from item_engine.textbase.elements import Char, Lemma, Token
+from typing import Iterator
 
 
 __all__ = ['gen_networks']

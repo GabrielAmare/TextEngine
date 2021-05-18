@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Dict, List, Callable, Iterator, Tuple, Optional, Type
 
 import python_generator as pg
@@ -44,9 +45,15 @@ class GroupToOutcome(Dict[Group, Outcome]):
     @classmethod
     def from_branch_set(cls, branch_set: BranchSet) -> GroupToOutcome:
         self: GroupToOutcome = cls()
+        data = []
         for branch in branch_set.items:
             for first, after in branch.splited:
+                data.append([str(branch), str(first.group), str(first.action), str(after)])
                 self.add(first.group, first.action, branch.new_rule(after))
+
+        from tools37 import ReprTable
+        print(str(ReprTable(data)))
+
         return self
 
     @property
@@ -64,6 +71,12 @@ class GroupToOutcome(Dict[Group, Outcome]):
 FUNC = Callable[[BranchSet], STATE]
 
 
+class ERROR_MODE(Enum):
+    FULL = "FULL"
+    MOST = "MOST"
+    NONE = "NONE"
+
+
 @dataclass
 class TargetSelect:
     non_terminal_part: BranchSet = field(default_factory=BranchSet)
@@ -74,27 +87,29 @@ class TargetSelect:
 
     @property
     def target(self) -> BranchSet:
-        return self.non_terminal_part | BranchSet(self.valid_branches)
+        return self.non_terminal_part | BranchSet(self.valid_branches) | BranchSet(self.error_branches)
 
     @property
     def priority(self):
         if self.non_terminal_part:
             return 2, 1
         elif self.valid_branches:
-            return 1, self.valid_priority
+            return 1, -self.valid_priority
         else:
-            return 0, self.error_priority
+            return 0, -self.error_priority
 
     def add_branch(self, branch: Branch) -> None:
         if not branch.is_terminal:
             self.non_terminal_part += branch
         elif branch.is_valid:
+            # self.valid_branches.append(branch)
             if branch.priority > self.valid_priority:
                 self.valid_priority = branch.priority
                 self.valid_branches = [branch]
             elif branch.priority == self.valid_priority:
                 self.valid_branches.append(branch)
         elif branch.is_error:
+            # self.error_branches.append(branch)
             if branch.priority > self.error_priority:
                 self.error_priority = branch.priority
                 self.error_branches = [branch]
@@ -112,6 +127,38 @@ class TargetSelect:
             return [T_STATE("!" + "|".join(sorted(branch.name for branch in self.error_branches)))]
         else:
             return [T_STATE("!")]
+
+    def _data_valid(self) -> T_STATE:
+        # if len(self.valid_branches) > 1:
+        #     print(self.valid_branches)
+        max_priority = max(branch.priority for branch in self.valid_branches)
+        valid_branches = [branch for branch in self.valid_branches if branch.priority == max_priority]
+        if len(valid_branches) == 1:
+            return T_STATE(valid_branches[0].name)
+        else:
+            raise AmbiguityException
+
+    def _data_error(self, error_mode: ERROR_MODE) -> T_STATE:
+        if error_mode == ERROR_MODE.FULL:
+            error_branches = self.error_branches
+        elif error_mode == ERROR_MODE.MOST:
+            max_priority = max(branch.priority for branch in self.error_branches)
+            error_branches = [branch for branch in self.error_branches if branch.priority == max_priority]
+        elif error_mode == ERROR_MODE.NONE:
+            error_branches = []
+        else:
+            raise ValueError(error_mode, "invalid error mode")
+        return T_STATE("!" + "|".join(sorted(branch.name for branch in error_branches)))
+
+    def data(self, func: FUNC, error_mode: ERROR_MODE = ERROR_MODE.MOST) -> STATE:
+        if self.non_terminal_part:  # priority given to non-terminal branches
+            return func(self.target)
+        elif self.valid_branches:  # then priority to valid branch with most priority
+            return self._data_valid()
+        elif self.error_branches:
+            return self._data_error(error_mode)
+        else:
+            return T_STATE("!")
 
 
 class ActionSelect(Dict[ACTION, TargetSelect]):
@@ -145,6 +192,19 @@ class ActionSelect(Dict[ACTION, TargetSelect]):
         for target_select in self.values():
             if target_select.non_terminal_part:
                 yield target_select.target
+
+    def data(self, func: FUNC, formal: bool = False) -> ActionSelectData:
+        max_priority = max(target_select.priority for target_select in self.values())
+        cases = {
+            action: target_select.data(func)
+            for action, target_select in self.items()
+            if target_select.priority == max_priority
+        }
+
+        if formal and len(cases) != 1:
+            raise AmbiguityException(cases)
+
+        return ActionSelectData(cases=cases)
 
 
 class GroupSelect(Dict[Group, ActionSelect]):
@@ -180,10 +240,20 @@ class GroupSelect(Dict[Group, ActionSelect]):
         cases = sorted(self.cases, key=lambda item: len(item[0].items))
         return pg.SWITCH(
             cases=[
-                (group.condition, action_select.code(func, formal))
+                (group.condition(pg.VAR("item")), action_select.code(func, formal))
                 for group, action_select in cases
             ],
             default=self.default.code(func, formal) if self.default else None
+        )
+
+    def data(self, func: FUNC, formal: bool = False) -> GroupSelectData:
+        return GroupSelectData(
+            {
+                group: action_select.data(func, formal)
+                for group, action_select
+                in sorted(self.cases, key=lambda item: len(item[0].items))
+            },
+            self.default.data(func, formal)
         )
 
 
@@ -198,6 +268,14 @@ class OriginSelect(Dict[BranchSet, GroupSelect]):
                 for origin, group_select in self.items()
             ],
             default=pg.EXCEPTION("f'\\nvalue: {value!r}\\nitem: {item!r}'").RAISE()
+        )
+
+    def data(self, func: FUNC, formal: bool = False) -> OriginSelectData:
+        return OriginSelectData(
+            {
+                func(origin): group_select.data(func, formal)
+                for origin, group_select in self.items()
+            }
         )
 
 
@@ -281,6 +359,18 @@ class Parser:
                 ),
             ])
 
+    def data(self) -> ParserData:
+        return ParserData(
+            name=self.name,
+            input_cls=self.input_cls,
+            output_cls=self.output_cls,
+            formal=self.formal,
+            osd=self.origin_select.data(self.get_nt_state, self.formal),
+
+            reflexive=self.reflexive,
+            skips=self.skips
+        )
+
     def to_csv(self, fp: str) -> None:
         data = []
 
@@ -299,56 +389,7 @@ class Parser:
 
     @property
     def graph(self, **config):
-        dag = BuilderGraph(**config, name=self.name)
-
-        branch_set_nodes: Dict[STATE, Node] = {}
-        errors: Dict[T_STATE, Node] = {}
-        valids: Dict[T_STATE, Node] = {}
-
-        def get_branch_set_node(value: STATE):
-            if isinstance(value, T_STATE):
-                if value.startswith('!'):
-                    value = '!' + '|'.join(sorted(value[1:].split('|')))
-                    if value not in errors:
-                        errors[value] = dag.terminal_error_state(value)
-                    return errors[value]
-                else:
-                    if value not in valids:
-                        valids[value] = dag.terminal_valid_state(value)
-                    return valids[value]
-            elif isinstance(value, NT_STATE):
-                if value not in branch_set_nodes:
-                    branch_set_nodes[value] = dag.non_terminal_state(value)
-                return branch_set_nodes[value]
-            else:
-                raise TypeError(type(value))
-
-        memory = {}
-
-        def make_chain(origin: NT_STATE, group: Group, action: ACTION, target: STATE):
-            origin_node = get_branch_set_node(origin)
-            target_node = get_branch_set_node(target)
-            k1 = (group, action, target_node)
-            if k1 in memory:
-                group_action_node = memory[k1]
-            else:
-                memory[k1] = group_action_node = dag.group_action(group, action)
-                dag.link(group_action_node, target_node)
-
-            k3 = (origin_node, group_action_node)
-            if k3 not in memory:
-                memory[k3] = dag.link(origin_node, group_action_node)
-
-        for origin, group_select in self.origin_select.items():
-            origin_value = self.get_nt_state(origin)
-            for group, action_select in group_select.cases:
-                for action, target_select in action_select.items():
-                    target_states = target_select.get_target_states(self.get_nt_state)
-                    target_states = sorted(target_states, key=lambda state: not isinstance(state, str))
-                    for target_value in target_states:
-                        make_chain(origin_value, group, action, target_value)
-
-        return dag
+        return self.data().graph
 
 
 class Engine:
@@ -412,4 +453,195 @@ class Engine:
         )
 
     def build(self, root: str = os.curdir, allow_overwrite: bool = False) -> None:
-        self.code.save(root=root, allow_overwrite=allow_overwrite)
+        self.data().code().save(root=root, allow_overwrite=allow_overwrite)
+
+    def data(self) -> EngineData:
+        return EngineData(
+            self.name,
+            *[parser.data() for parser in self.parsers],
+            materials=self.operators
+        )
+
+
+########################################################################################################################
+# DATA TO CODE
+########################################################################################################################
+
+
+class ActionSelectData:
+    def __init__(self, cases: Dict[ACTION, STATE]):
+        self.cases: Dict[ACTION, STATE] = cases
+
+    def code(self, item: pg.VAR, formal: bool) -> pg.BLOCK:
+        rtype = pg.RETURN if formal else pg.YIELD
+
+        return pg.BLOCK(*[
+            rtype(pg.ARGS(pg.STR(action), pg.INT(value) if isinstance(value, int) else pg.STR(value)))
+            for action, value in self.cases.items()
+        ])
+
+
+class GroupSelectData:
+    def __init__(self, cases: Dict[Group, ActionSelectData], default: ActionSelectData):
+        self.cases: Dict[Group, ActionSelectData] = cases
+        self.default: ActionSelectData = default
+
+    def code(self, item: pg.VAR, formal: bool) -> pg.SWITCH:
+        return pg.SWITCH(
+            cases=[(group.condition(item), asd.code(item, formal)) for group, asd in self.cases.items()],
+            default=self.default.code(item, formal)
+        )
+
+
+class OriginSelectData:
+    def __init__(self, cases: Dict[NT_STATE, GroupSelectData]):
+        self.cases: Dict[NT_STATE, GroupSelectData] = cases
+
+    def code(self, current: pg.VAR, item: pg.VAR, formal: bool) -> pg.SWITCH:
+        return pg.SWITCH(
+            cases=[(current.GETATTR("value").EQ(pg.INT(value)), gsd.code(item, formal)) for value, gsd in
+                   self.cases.items()],
+            default=pg.EXCEPTION(pg.FSTR("value = {current.value!r}")).RAISE()
+        )
+
+
+class ParserData:
+    def __init__(self,
+                 name: str,
+                 input_cls: Type[Element],
+                 output_cls: Type[Element],
+                 osd: OriginSelectData,
+                 formal: bool,
+
+                 skips: List[str] = None,
+                 reflexive: bool = False
+                 ):
+        self.name: str = name
+        self.osd: OriginSelectData = osd
+        self.input_cls: Type[Element] = input_cls
+        self.output_cls: Type[Element] = output_cls
+        self.formal: bool = formal
+
+        self.skips: List[str] = skips or []
+        self.reflexive: bool = reflexive
+
+    def code(self) -> pg.MODULE:
+        current = pg.VAR("current")
+        item = pg.VAR("item")
+
+        rtype = "Tuple[ACTION, STATE]" if self.formal else "Iterator[Tuple[ACTION, STATE]]"
+
+        return pg.MODULE(
+            self.name,
+            [
+                pg.IMPORT.FROM("typing", "Tuple"),
+                *([] if self.formal else [pg.IMPORT.FROM("typing", "Iterator")]),
+                pg.IMPORT.FROM("item_engine", ["ACTION", "STATE"]),
+                pg.IMPORT.FROM(self.input_cls.__module__, self.input_cls.__name__),
+                pg.IMPORT.FROM(self.output_cls.__module__, self.output_cls.__name__),
+                pg.VAR("__all__").ASSIGN(pg.LIST([pg.STR(self.name)])),
+                pg.DEF(
+                    name=self.name,
+                    args=pg.ARGS(
+                        current.ARG(t=self.output_cls.__name__),
+                        item.ARG(t=self.input_cls.__name__)
+                    ),
+                    block=self.osd.code(current, item, self.formal),
+                    t=rtype
+                ),
+            ])
+
+    @property
+    def graph(self, **config):
+        dag = BuilderGraph(**config, name=self.name)
+
+        branch_set_nodes: Dict[STATE, Node] = {}
+        errors: Dict[T_STATE, Node] = {}
+        valids: Dict[T_STATE, Node] = {}
+
+        def getnode(value: STATE):
+            if isinstance(value, T_STATE):
+                if value.startswith('!'):
+                    if value not in errors:
+                        errors[value] = dag.terminal_error_state(value)
+                    return errors[value]
+                else:
+                    if value not in valids:
+                        valids[value] = dag.terminal_valid_state(value)
+                    return valids[value]
+            else:
+                if value not in branch_set_nodes:
+                    branch_set_nodes[value] = dag.non_terminal_state(value)
+                return branch_set_nodes[value]
+
+        memory = {}
+
+        def make_chain(origin: NT_STATE, group: Group, action: ACTION, target: STATE):
+            origin_node = getnode(origin)
+            target_node = getnode(target)
+            k1 = (group, action, target_node)
+            if k1 in memory:
+                group_action_node = memory[k1]
+            else:
+                memory[k1] = group_action_node = dag.group_action(group, action)
+                dag.link(group_action_node, target_node)
+
+            k3 = (origin_node, group_action_node)
+            if k3 not in memory:
+                memory[k3] = dag.link(origin_node, group_action_node)
+
+        for origin, gsd in self.osd.cases.items():
+            for group, asd in gsd.cases.items():
+                for action, target in asd.cases.items():
+                    make_chain(origin, group, action, target)
+
+            for action, target in gsd.default.cases.items():
+                make_chain(origin, Group.never(), action, target)
+
+        return dag
+
+
+class EngineData:
+    def __init__(self, name: str, *pds: ParserData, materials: pg.MODULE = None):
+        self.name: str = name
+        self.pds: Tuple[ParserData] = pds
+        self.materials: Optional[pg.MODULE] = materials
+
+    def code(self) -> pg.PACKAGE:
+        imports: List[pg.STATEMENT] = []
+        for parser_data in self.pds:
+            imports.append(pg.IMPORT.FROM(parser_data.input_cls.__module__, parser_data.input_cls.__name__))
+            imports.append(pg.IMPORT.FROM(parser_data.output_cls.__module__, parser_data.output_cls.__name__))
+            imports.append(pg.IMPORT.FROM("." + parser_data.name, parser_data.name))
+
+        return pg.PACKAGE(
+            self.name,
+            pg.MODULE(
+                '__init__',
+                scope=[
+                    *imports,
+                    pg.IMPORT.FROM("typing", "Iterator"),
+                    pg.IMPORT.FROM("item_engine", "*"),
+                    pg.VAR("__all__").ASSIGN(pg.LIST([pg.STR("gen_networks")])),
+                    pg.DEF(
+                        name="gen_networks",
+                        args=pg.ARGS(
+                            *[pg.VAR(f"{parser_data.name}_cfg").ARG(t="dict") for parser_data in self.pds]),
+                        t="Iterator[Network]",
+                        block=[
+                            pg.YIELD(
+                                pg.VAR("ReflexiveNetwork" if parser.reflexive else "Network").CALL(
+                                    pg.VAR("function").ARG(pg.VAR(parser.name)),
+                                    pg.VAR("input_cls").ARG(pg.VAR(parser.input_cls.__name__)),
+                                    pg.VAR("output_cls").ARG(pg.VAR(parser.output_cls.__name__)),
+                                    pg.VAR("to_ignore").ARG(pg.LIST(list(map(repr, parser.skips)))),
+                                    pg.VAR(f"{parser.name}_cfg").AS_KWARG
+                                )
+                            )
+                            for parser in self.pds
+                        ]
+                    )
+                ]),
+            *([] if self.materials is None else [self.materials]),
+            *[parser.code() for parser in self.pds]
+        )

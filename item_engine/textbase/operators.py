@@ -40,6 +40,10 @@ class UNIT:
 
     def pg_class(self, cls_name: str) -> pg.CLASS:
         args = [pg.ARG(k=self.k, t=self.t.__name__)]
+
+        SELF = pg.SELF
+        OTHER = pg.VAR("other")
+
         return pg.CLASS(
             name=cls_name,
             block=[
@@ -48,7 +52,16 @@ class UNIT:
                 pg.DEF(
                     name="__str__",
                     args=pg.SELF,
-                    block=pg.VAR("str").CALL(pg.SELF.GETATTR(self.k)).RETURN()
+                    block=pg.VAR("str").CALL(SELF.GETATTR(self.k)).RETURN()
+                ),
+                pg.DEF(
+                    name="__eq__",
+                    args=[SELF, OTHER],
+                    block=pg.AND(
+                        SELF.TYPE_OF.IS(OTHER.TYPE_OF),
+                        SELF.GETATTR(self.k).EQ(OTHER.GETATTR(self.k))
+                    ).RETURN()
+
                 )
             ]
         )
@@ -76,7 +89,11 @@ class OP:
                 raise ValueError(child)
 
     def pg_class(self, cls_name: str):
-        args = [pg.ARG(k=f"c{i}") for i in range(self.n)]
+        keys = [f"c{i}" for i in range(self.n)]
+        args = [pg.ARG(key) for key in keys]
+
+        OTHER = pg.VAR("other")
+
         return pg.CLASS(
             name=cls_name,
             block=[
@@ -88,6 +105,15 @@ class OP:
                     block=[
                         pg.RETURN(pg.FSTR(self.as_str))
                     ]
+                ),
+                pg.DEF(
+                    name="__eq__",
+                    args=[pg.SELF, OTHER],
+                    block=pg.AND(
+                        pg.SELF.TYPE_OF.IS(OTHER.TYPE_OF),
+                        *[pg.SELF.GETATTR(key).EQ(OTHER.GETATTR(key)) for key in keys]
+                    ).RETURN()
+
                 )
             ]
         )
@@ -115,6 +141,8 @@ class ENUM:
         self.s: Union[Symbol, Keyword] = s
 
     def pg_class(self, cls_name: str) -> pg.CLASS:
+        OTHER = pg.VAR("other")
+
         return pg.CLASS(
             name=cls_name,
             block=[
@@ -133,6 +161,24 @@ class ENUM:
                     args=pg.SELF,
                     block=pg.STR(str(self.s)).GETATTR("join").CALL(
                         pg.VAR("map").CALL("str", pg.SELF.GETATTR("cs"))
+                    ).RETURN()
+                ),
+                pg.IMPORT.FROM("itertools", "starmap"),
+                pg.IMPORT.FROM("operator", "eq"),
+                pg.DEF(
+                    name="__eq__",
+                    args=[pg.SELF, OTHER],
+                    block=pg.AND(
+                        pg.SELF.TYPE_OF.IS(OTHER.TYPE_OF),
+                        pg.VAR("all").CALL(
+                            pg.VAR("starmap").CALL(
+                                pg.VAR("eq"),
+                                pg.VAR("zip").CALL(
+                                    pg.SELF.GETATTR("cs"),
+                                    OTHER.GETATTR("cs")
+                                )
+                            )
+                        )
                     ).RETURN()
                 )
             ]

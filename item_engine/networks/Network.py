@@ -67,8 +67,14 @@ class Network(Generic[INPUT, OUTPUT]):
 
     def generate_from(self, o: OUTPUT, i: INPUT) -> Iterator[OUTPUT]:
         """Return the new outputs generated from the ``origin`` output and a ``target`` input"""
-        for action, value in self.function(o.value, i):
-            yield o.develop(action, value, i)
+        result = self.function(o, i)
+        try:
+            for action, value in result:
+                yield o.develop(action, value, i)
+        except ValueError:
+            yield o.develop(*result, i)
+        # for action, value in self.function(o, i):
+        #     yield o.develop(action, value, i)
 
     def confirm_non_terminals(self, non_terminals: SetList[OUTPUT]) -> None:
         for o in non_terminals:
