@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 from typing import Optional, List, Union, Dict, Tuple, Iterable
+from tools37 import ReprTable
 
 __all__ = []
 
@@ -691,6 +692,17 @@ class PACKAGE:
             "\n".join(f"{module.name}.py" for module in modules)
         self.name: VAR_O = VAR.parse(name)
         self.modules: List[MODULE] = list(modules)
+
+    def __str__(self):
+        rt = ReprTable.from_items(
+            items=self.modules,
+            config={
+                "module name": lambda module: f"{module.name}.py",
+                "module content": lambda module: str(module)
+            }
+        )
+
+        return f"package : '{self.name}/'\n{rt!s}"
 
     def save(self, root: str, allow_overwrite: bool = False):
         path = os.path.join(root, str(self.name))
