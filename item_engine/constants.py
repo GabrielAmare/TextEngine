@@ -1,9 +1,10 @@
-from typing import Union
+from typing import Union, Tuple
 
 __all__ = [
     "NT_STATE", "T_STATE", "STATE",
     "INDEX", "POSITION",
-    "ACTION", "INCLUDE", "EXCLUDE", "AS", "IN"
+    "ACTION", "INCLUDE", "EXCLUDE", "AS", "IN",
+    "CASE",
 ]
 
 ACTION = str
@@ -18,3 +19,5 @@ INCLUDE: ACTION = "∈"
 EXCLUDE: ACTION = "∉"
 AS: ACTION = "as:{}"
 IN: ACTION = "in:{}"
+
+CASE = Tuple[ACTION, STATE]

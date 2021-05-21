@@ -3,9 +3,10 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Callable, Iterator, Tuple, Optional, Type
+from typing import Dict, List, Callable, Iterator, Tuple, Optional, Type, Union
 
-import python_generator as pg
+from python_generator import VAR, DEF, ARGS, INT, IF, BLOCK, STR, LIST, IMPORT, \
+    RETURN, YIELD, SWITCH, FSTR, EXCEPTION, MODULE, PACKAGE, STATEMENT, ARG
 
 from .generic_items import GenericItem, GenericItemSet, optimized
 from .constants import ACTION, STATE, NT_STATE, T_STATE
@@ -48,11 +49,11 @@ class GroupToOutcome(Dict[Group, Outcome]):
         data = []
         for branch in branch_set.items:
             for first, after in branch.splited:
-                data.append([str(branch), str(first.group), str(first.action), str(after)])
+                # data.append([str(branch), str(first.group), str(first.action), str(after)])
                 self.add(first.group, first.action, branch.new_rule(after))
 
-        from tools37 import ReprTable
-        print(str(ReprTable(data)))
+        # from tools37 import ReprTable
+        # print(str(ReprTable(data)))
 
         return self
 
@@ -102,19 +103,11 @@ class TargetSelect:
         if not branch.is_terminal:
             self.non_terminal_part += branch
         elif branch.is_valid:
-            # self.valid_branches.append(branch)
-            if branch.priority > self.valid_priority:
-                self.valid_priority = branch.priority
-                self.valid_branches = [branch]
-            elif branch.priority == self.valid_priority:
-                self.valid_branches.append(branch)
+            self.valid_priority = max(self.valid_priority, branch.priority)
+            self.valid_branches.append(branch)
         elif branch.is_error:
-            # self.error_branches.append(branch)
-            if branch.priority > self.error_priority:
-                self.error_priority = branch.priority
-                self.error_branches = [branch]
-            elif branch.priority == self.error_priority:
-                self.error_branches.append(branch)
+            self.error_priority = max(self.error_priority, branch.priority)
+            self.error_branches.append(branch)
         else:
             raise Exception(f"Unknown case for branch neither non-terminal, valid or error !")
 
@@ -129,10 +122,7 @@ class TargetSelect:
             return [T_STATE("!")]
 
     def _data_valid(self) -> T_STATE:
-        # if len(self.valid_branches) > 1:
-        #     print(self.valid_branches)
-        max_priority = max(branch.priority for branch in self.valid_branches)
-        valid_branches = [branch for branch in self.valid_branches if branch.priority == max_priority]
+        valid_branches = [branch for branch in self.valid_branches if branch.priority == self.valid_priority]
         if len(valid_branches) == 1:
             return T_STATE(valid_branches[0].name)
         else:
@@ -142,8 +132,7 @@ class TargetSelect:
         if error_mode == ERROR_MODE.FULL:
             error_branches = self.error_branches
         elif error_mode == ERROR_MODE.MOST:
-            max_priority = max(branch.priority for branch in self.error_branches)
-            error_branches = [branch for branch in self.error_branches if branch.priority == max_priority]
+            error_branches = [branch for branch in self.error_branches if branch.priority == self.error_priority]
         elif error_mode == ERROR_MODE.NONE:
             error_branches = []
         else:
@@ -151,9 +140,9 @@ class TargetSelect:
         return T_STATE("!" + "|".join(sorted(branch.name for branch in error_branches)))
 
     def data(self, func: FUNC, error_mode: ERROR_MODE = ERROR_MODE.MOST) -> STATE:
-        if self.non_terminal_part:  # priority given to non-terminal branches
+        if self.non_terminal_part:
             return func(self.target)
-        elif self.valid_branches:  # then priority to valid branch with most priority
+        elif self.valid_branches:
             return self._data_valid()
         elif self.error_branches:
             return self._data_error(error_mode)
@@ -168,23 +157,6 @@ class ActionSelect(Dict[ACTION, TargetSelect]):
         else:
             self[action] = target_select = TargetSelect()
         target_select.add_branch(branch)
-
-    def code(self, func: FUNC, formal: bool = False) -> pg.BLOCK:
-        max_priority = max(target_select.priority for target_select in self.values())
-        cases = [
-            pg.ARGS(repr(action), repr(value)).YIELD()
-            for action, target_select in self.items()
-            if target_select.priority == max_priority
-            for value in target_select.get_target_states(func)
-        ]
-
-        if formal and len(cases) != 1:
-            raise AmbiguityException(cases)
-
-        if len(cases) == 0:
-            return pg.PASS
-
-        return pg.BLOCK(*cases)
 
     @property
     def targets(self) -> Iterator[BranchSet]:
@@ -236,16 +208,6 @@ class GroupSelect(Dict[Group, ActionSelect]):
                 return action_select
         return ActionSelect()
 
-    def code(self, func: FUNC, formal: bool = False) -> pg.SWITCH:
-        cases = sorted(self.cases, key=lambda item: len(item[0].items))
-        return pg.SWITCH(
-            cases=[
-                (group.condition(pg.VAR("item")), action_select.code(func, formal))
-                for group, action_select in cases
-            ],
-            default=self.default.code(func, formal) if self.default else None
-        )
-
     def data(self, func: FUNC, formal: bool = False) -> GroupSelectData:
         return GroupSelectData(
             {
@@ -258,18 +220,6 @@ class GroupSelect(Dict[Group, ActionSelect]):
 
 
 class OriginSelect(Dict[BranchSet, GroupSelect]):
-    def code(self, func: FUNC, formal: bool = False) -> pg.SWITCH:
-        return pg.SWITCH(
-            cases=[
-                (
-                    pg.VAR("value").EQ(func(origin)),
-                    group_select.code(func, formal)
-                )
-                for origin, group_select in self.items()
-            ],
-            default=pg.EXCEPTION("f'\\nvalue: {value!r}\\nitem: {item!r}'").RAISE()
-        )
-
     def data(self, func: FUNC, formal: bool = False) -> OriginSelectData:
         return OriginSelectData(
             {
@@ -287,7 +237,8 @@ class Parser:
                  output_cls: Type[Element],
                  skips: List[T_STATE],
                  reflexive: bool,
-                 formal: bool,
+                 formal_inputs: bool,
+                 formal_outputs: bool,
                  ):
         """
 
@@ -297,14 +248,16 @@ class Parser:
         :param output_cls: The type of elements the parser will emit
         :param skips: The list of element types that must be ignored (commonly used for white space patterns)
         :param reflexive: Will the parser receive what it emits (used to build recursive grammar)
-        :param formal: Is the parser formal ? If it's the case, any ambiguity will raise a SyntaxError
+        :param formal_inputs: Restrict the inputs to be consecutive
+        :param formal_outputs: Is the parser formal ? If it's the case, any ambiguity will raise a SyntaxError
         """
         self.name: str = name
         self.branch_set: BranchSet = branch_set
         self.input_cls: Type[Element] = input_cls
         self.output_cls: Type[Element] = output_cls
         self.reflexive: bool = reflexive
-        self.formal: bool = formal
+        self.formal_inputs: bool = formal_inputs
+        self.formal_outputs: bool = formal_outputs
         self.skips: List[T_STATE] = skips
 
         self.branch_sets: List[BranchSet] = [self.branch_set]
@@ -343,29 +296,14 @@ class Parser:
     def get_nt_state(self, branch_set: BranchSet) -> NT_STATE:
         return NT_STATE(self.branch_sets.index(branch_set))
 
-    @property
-    def code(self) -> pg.MODULE:
-        return pg.MODULE(
-            self.name,
-            [
-                pg.IMPORT.FROM("typing", pg.ARGS("Iterator", "Tuple")),
-                pg.IMPORT.FROM("item_engine", pg.ARGS("NT_STATE", "Element", "ACTION", "STATE")),
-                pg.VAR("__all__").ASSIGN(pg.LIST([pg.STR(self.name)])),
-                pg.DEF(
-                    name=self.name,
-                    args=pg.ARGS(pg.ARG("value", t="NT_STATE"), pg.ARG("item", t="Element")),
-                    block=self.origin_select.code(self.get_nt_state, self.formal),
-                    t="Iterator[Tuple[ACTION, STATE]]"
-                ),
-            ])
-
     def data(self) -> ParserData:
         return ParserData(
             name=self.name,
             input_cls=self.input_cls,
             output_cls=self.output_cls,
-            formal=self.formal,
-            osd=self.origin_select.data(self.get_nt_state, self.formal),
+            formal_inputs=self.formal_inputs,
+            formal_outputs=self.formal_outputs,
+            osd=self.origin_select.data(self.get_nt_state, self.formal_outputs),
 
             reflexive=self.reflexive,
             skips=self.skips
@@ -396,61 +334,13 @@ class Engine:
     def __init__(self,
                  name: str,
                  parsers: List[Parser],
-                 operators: Optional[pg.MODULE] = None
+                 operators: Optional[MODULE] = None
                  ):
         assert name.isidentifier()
         assert not any(parser.name == 'operators' for parser in parsers)
         self.name: str = name
         self.parsers: List[Parser] = parsers
-        self.operators: Optional[pg.MODULE] = operators
-
-    @property
-    def code(self) -> pg.PACKAGE:
-        """
-
-        def gen_networks(lexer_cfg):
-            yield Network(parser=lexer, **lexer_cfg)
-            yield ReflexiveNetwork(parser=parser, **lexer_cfg)
-
-        """
-
-        imports: List[pg.STATEMENT] = []
-        for parser in self.parsers:
-            imports.append(pg.IMPORT.FROM(parser.input_cls.__module__, parser.input_cls.__name__))
-            imports.append(pg.IMPORT.FROM(parser.output_cls.__module__, parser.output_cls.__name__))
-            imports.append(pg.IMPORT.FROM("." + parser.name, parser.name))
-
-        return pg.PACKAGE(
-            self.name,
-            pg.MODULE(
-                '__init__',
-                scope=[
-                    *imports,
-                    pg.IMPORT.FROM("typing", "Iterator"),
-                    pg.IMPORT.FROM("item_engine", "*"),
-                    pg.VAR("__all__").ASSIGN(pg.LIST([pg.STR("gen_networks")])),
-                    pg.DEF(
-                        name="gen_networks",
-                        args=pg.ARGS(
-                            *[pg.VAR(f"{parser.name}_cfg").ARG(t="dict") for parser in self.parsers]),
-                        t="Iterator[Network]",
-                        block=[
-                            pg.YIELD(
-                                pg.VAR("ReflexiveNetwork" if parser.reflexive else "Network").CALL(
-                                    pg.VAR("function").ARG(pg.VAR(parser.name)),
-                                    pg.VAR("input_cls").ARG(pg.VAR(parser.input_cls.__name__)),
-                                    pg.VAR("output_cls").ARG(pg.VAR(parser.output_cls.__name__)),
-                                    pg.VAR("to_ignore").ARG(pg.LIST(list(map(repr, parser.skips)))),
-                                    pg.VAR(f"{parser.name}_cfg").AS_KWARG
-                                )
-                            )
-                            for parser in self.parsers
-                        ]
-                    )
-                ]),
-            *([] if self.operators is None else [self.operators]),
-            *[parser.code for parser in self.parsers]
-        )
+        self.operators: Optional[MODULE] = operators
 
     def build(self, root: str = os.curdir, allow_overwrite: bool = False) -> None:
         self.data().code().save(root=root, allow_overwrite=allow_overwrite)
@@ -472,11 +362,11 @@ class ActionSelectData:
     def __init__(self, cases: Dict[ACTION, STATE]):
         self.cases: Dict[ACTION, STATE] = cases
 
-    def code(self, item: pg.VAR, formal: bool) -> pg.BLOCK:
-        rtype = pg.RETURN if formal else pg.YIELD
+    def code(self, item: VAR, formal: bool) -> BLOCK:
+        rtype = RETURN if formal else YIELD
 
-        return pg.BLOCK(*[
-            rtype(pg.ARGS(pg.STR(action), pg.INT(value) if isinstance(value, int) else pg.STR(value)))
+        return BLOCK(*[
+            rtype(ARGS(STR(action), INT(value) if isinstance(value, int) else STR(value)))
             for action, value in self.cases.items()
         ])
 
@@ -486,8 +376,8 @@ class GroupSelectData:
         self.cases: Dict[Group, ActionSelectData] = cases
         self.default: ActionSelectData = default
 
-    def code(self, item: pg.VAR, formal: bool) -> pg.SWITCH:
-        return pg.SWITCH(
+    def code(self, item: VAR, formal: bool) -> Union[IF, BLOCK]:
+        return SWITCH(
             cases=[(group.condition(item), asd.code(item, formal)) for group, asd in self.cases.items()],
             default=self.default.code(item, formal)
         )
@@ -497,11 +387,11 @@ class OriginSelectData:
     def __init__(self, cases: Dict[NT_STATE, GroupSelectData]):
         self.cases: Dict[NT_STATE, GroupSelectData] = cases
 
-    def code(self, current: pg.VAR, item: pg.VAR, formal: bool) -> pg.SWITCH:
-        return pg.SWITCH(
-            cases=[(current.GETATTR("value").EQ(pg.INT(value)), gsd.code(item, formal)) for value, gsd in
+    def code(self, current: VAR, item: VAR, formal: bool) -> SWITCH:
+        return SWITCH(
+            cases=[(current.GETATTR("value").EQ(INT(value)), gsd.code(item, formal)) for value, gsd in
                    self.cases.items()],
-            default=pg.EXCEPTION(pg.FSTR("value = {current.value!r}")).RAISE()
+            default=EXCEPTION(FSTR("value = {current.value!r}")).RAISE()
         )
 
 
@@ -511,7 +401,8 @@ class ParserData:
                  input_cls: Type[Element],
                  output_cls: Type[Element],
                  osd: OriginSelectData,
-                 formal: bool,
+                 formal_inputs: bool,
+                 formal_outputs: bool,
 
                  skips: List[str] = None,
                  reflexive: bool = False
@@ -520,35 +411,48 @@ class ParserData:
         self.osd: OriginSelectData = osd
         self.input_cls: Type[Element] = input_cls
         self.output_cls: Type[Element] = output_cls
-        self.formal: bool = formal
+        self.formal_inputs: bool = formal_inputs
+        self.formal_outputs: bool = formal_outputs
 
         self.skips: List[str] = skips or []
         self.reflexive: bool = reflexive
 
-    def code(self) -> pg.MODULE:
-        current = pg.VAR("current")
-        item = pg.VAR("item")
+    def code(self) -> MODULE:
+        current = VAR("current")
+        item = VAR("item")
 
-        rtype = "Tuple[ACTION, STATE]" if self.formal else "Iterator[Tuple[ACTION, STATE]]"
+        rtype = "Tuple[ACTION, STATE]" if self.formal_outputs else "Iterator[Tuple[ACTION, STATE]]"
 
-        return pg.MODULE(
+        from .builders import build_func
+
+        return MODULE(
             self.name,
             [
-                pg.IMPORT.FROM("typing", "Tuple"),
-                *([] if self.formal else [pg.IMPORT.FROM("typing", "Iterator")]),
-                pg.IMPORT.FROM("item_engine", ["ACTION", "STATE"]),
-                pg.IMPORT.FROM(self.input_cls.__module__, self.input_cls.__name__),
-                pg.IMPORT.FROM(self.output_cls.__module__, self.output_cls.__name__),
-                pg.VAR("__all__").ASSIGN(pg.LIST([pg.STR(self.name)])),
-                pg.DEF(
-                    name=self.name,
-                    args=pg.ARGS(
+                IMPORT.FROM("typing", "Tuple"),
+                *([] if self.formal_outputs else [IMPORT.FROM("typing", "Iterator")]),
+                IMPORT.FROM("item_engine", ["ACTION", "STATE"]),
+                IMPORT.FROM(self.input_cls.__module__, self.input_cls.__name__),
+                IMPORT.FROM(self.output_cls.__module__, self.output_cls.__name__),
+                VAR("__all__").ASSIGN(LIST([STR(self.name)])),
+                DEF(
+                    name=f"_{self.name}",
+                    args=ARGS(
                         current.ARG(t=self.output_cls.__name__),
                         item.ARG(t=self.input_cls.__name__)
                     ),
-                    block=self.osd.code(current, item, self.formal),
+                    block=self.osd.code(current, item, self.formal_outputs),
                     t=rtype
                 ),
+                build_func(
+                    name=self.name,
+                    fun=f"_{self.name}",
+                    formal_inputs=self.formal_inputs,
+                    formal_outputs=self.formal_outputs,
+                    reflexive=self.reflexive,
+                    input_cls=self.input_cls,
+                    output_cls=self.output_cls,
+                    skips=self.skips
+                )
             ])
 
     @property
@@ -602,44 +506,41 @@ class ParserData:
 
 
 class EngineData:
-    def __init__(self, name: str, *pds: ParserData, materials: pg.MODULE = None):
+    def __init__(self, name: str, *pds: ParserData, materials: MODULE = None):
         self.name: str = name
         self.pds: Tuple[ParserData] = pds
-        self.materials: Optional[pg.MODULE] = materials
+        self.materials: Optional[MODULE] = materials
 
-    def code(self) -> pg.PACKAGE:
-        imports: List[pg.STATEMENT] = []
+    def code(self) -> PACKAGE:
+        imports: List[STATEMENT] = []
         for parser_data in self.pds:
-            imports.append(pg.IMPORT.FROM(parser_data.input_cls.__module__, parser_data.input_cls.__name__))
-            imports.append(pg.IMPORT.FROM(parser_data.output_cls.__module__, parser_data.output_cls.__name__))
-            imports.append(pg.IMPORT.FROM("." + parser_data.name, parser_data.name))
+            imports.append(IMPORT.FROM("." + parser_data.name, parser_data.name))
 
-        return pg.PACKAGE(
+        fp = self.pds[0]
+        lp = self.pds[-1]
+
+        res = VAR("src")
+
+        imports.append(IMPORT.FROM(fp.input_cls.__module__, fp.input_cls.__name__))
+        imports.append(IMPORT.FROM(lp.output_cls.__module__, lp.output_cls.__name__))
+
+        for pd in self.pds:
+            res = VAR(pd.name).CALL(res)
+
+        return PACKAGE(
             self.name,
-            pg.MODULE(
+            MODULE(
                 '__init__',
                 scope=[
                     *imports,
-                    pg.IMPORT.FROM("typing", "Iterator"),
-                    pg.IMPORT.FROM("item_engine", "*"),
-                    pg.VAR("__all__").ASSIGN(pg.LIST([pg.STR("gen_networks")])),
-                    pg.DEF(
-                        name="gen_networks",
-                        args=pg.ARGS(
-                            *[pg.VAR(f"{parser_data.name}_cfg").ARG(t="dict") for parser_data in self.pds]),
-                        t="Iterator[Network]",
-                        block=[
-                            pg.YIELD(
-                                pg.VAR("ReflexiveNetwork" if parser.reflexive else "Network").CALL(
-                                    pg.VAR("function").ARG(pg.VAR(parser.name)),
-                                    pg.VAR("input_cls").ARG(pg.VAR(parser.input_cls.__name__)),
-                                    pg.VAR("output_cls").ARG(pg.VAR(parser.output_cls.__name__)),
-                                    pg.VAR("to_ignore").ARG(pg.LIST(list(map(repr, parser.skips)))),
-                                    pg.VAR(f"{parser.name}_cfg").AS_KWARG
-                                )
-                            )
-                            for parser in self.pds
-                        ]
+                    IMPORT.FROM("typing", "Iterator"),
+                    IMPORT.FROM(".materials", "*"),
+                    VAR("__all__").ASSIGN(LIST([STR("parse")])),
+                    DEF(
+                        name="parse",
+                        args=ARG("src", t=f"Iterator[{fp.input_cls.__name__}]"),
+                        t=f"Iterator[{lp.output_cls.__name__}]",
+                        block=RETURN(res)
                     )
                 ]),
             *([] if self.materials is None else [self.materials]),

@@ -4,7 +4,7 @@ from typing import Tuple, Iterator, FrozenSet, List, TypeVar, Generic, Type
 from functools import reduce
 from operator import and_
 
-from .constants import ACTION, INCLUDE, EXCLUDE, AS, IN, T_STATE, INDEX, STATE
+from .constants import ACTION, INCLUDE, EXCLUDE, AS, IN, T_STATE, INDEX, STATE, CASE
 from .generic_items import GenericItem, GenericItemSet
 import python_generator as pg
 
@@ -466,7 +466,7 @@ class Element(HasState, HasSpan):
     def EOF(cls, at: INDEX):
         return cls(at=at, to=at, value=T_STATE("EOF"))
 
-    def develop(self, action: ACTION, value: STATE, item: Element) -> Element:
+    def develop(self, case: CASE, item: Element) -> Element:
         raise NotImplementedError
 
     def eof(self):

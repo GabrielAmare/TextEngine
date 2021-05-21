@@ -1,12 +1,13 @@
+from dataclasses import replace
 from item_engine import ACTION, STATE
 from item_engine.textbase.elements import Char, Token
-from typing import Tuple
+from typing import Iterator, Tuple
 
 
 __all__ = ['lexer']
 
 
-def lexer(current: Token, item: Char) -> Tuple[ACTION, STATE]:
+def _lexer(current: Token, item: Char) -> Tuple[ACTION, STATE]:
     if current.value == 0:
         if item.value == '\n':
             return '∈', 2
@@ -177,3 +178,27 @@ def lexer(current: Token, item: Char) -> Tuple[ACTION, STATE]:
             return '∉', 'KW_NOT'
     else:
         raise Exception(f'value = {current.value!r}')
+
+
+def lexer(src: Iterator[Char]) -> Iterator[Token]:
+    cur: Token = Token(at=0, to=0, value=0)
+    pos: int = 0
+    for old in src:
+        while cur.to == old.at:
+            new: Token = cur.develop(_lexer(cur, old), old)
+            if not new.is_terminal:
+                cur = new
+                continue
+            if new.is_valid:
+                cur = Token(at=new.to, to=new.to, value=0)
+                if new.value in ['WHITESPACE']:
+                    continue
+                else:
+                    new = replace(new, at=pos, to=pos + 1)
+                    pos += 1
+                yield new
+                continue
+            if old.value == 'EOF':
+                yield Token.EOF(pos)
+                break
+            raise SyntaxError((cur, old, new))

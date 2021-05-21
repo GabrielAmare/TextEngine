@@ -143,13 +143,15 @@ class ENUM:
     def pg_class(self, cls_name: str) -> pg.CLASS:
         OTHER = pg.VAR("other")
 
+        CS = pg.VAR("cs")
+
         return pg.CLASS(
             name=cls_name,
             block=[
                 pg.DEF(
                     name="__init__",
-                    args=pg.ARGS(pg.SELF, pg.VAR("cs").AS_ARG),
-                    block=pg.SELF.SETATTR("cs", "cs")
+                    args=pg.ARGS(pg.SELF, CS.AS_ARG),
+                    block=pg.SELF.SETATTR(CS, CS)
                 ),
                 pg.DEF(
                     name="__repr__",

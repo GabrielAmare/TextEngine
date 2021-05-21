@@ -1,13 +1,12 @@
 from .lexer import lexer
+from .materials import *
 from .parser import parser
-from item_engine import *
-from item_engine.textbase.elements import Char, Lemma, Token
+from item_engine.textbase.elements import Char, Lemma
 from typing import Iterator
 
 
-__all__ = ['gen_networks']
+__all__ = ['parse']
 
 
-def gen_networks(lexer_cfg: dict, parser_cfg: dict) -> Iterator[Network]:
-    yield Network(function=lexer, input_cls=Char, output_cls=Token, to_ignore=['WHITESPACE'], **lexer_cfg)
-    yield ReflexiveNetwork(function=parser, input_cls=Token, output_cls=Lemma, to_ignore=[], **parser_cfg)
+def parse(src: Iterator[Char]) -> Iterator[Lemma]:
+    return parser(lexer(src))
