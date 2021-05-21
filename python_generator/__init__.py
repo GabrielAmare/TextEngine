@@ -1,13 +1,10 @@
 from __future__ import annotations
 import os
-from typing import Optional, List, Union, Dict, Tuple, Iterable
+from typing import Optional, List, Union, Dict, Tuple, Iterable, Iterator
 from tools37 import ReprTable
 
 __all__ = []
 
-PASS = "pass"
-CONTINUE = "continue"
-BREAK = "break"
 NONE = "None"
 TRUE = "True"
 FALSE = "False"
@@ -28,6 +25,32 @@ class STATEMENT:
         return BLOCK(self)
 
 
+class _PASS(STATEMENT):
+    def __str__(self):
+        return "pass"
+
+
+PASS = _PASS()
+
+
+class _CONTINUE(STATEMENT):
+    def __str__(self):
+        return "continue"
+
+
+CONTINUE = _CONTINUE()
+
+
+class _BREAK(STATEMENT):
+    def __str__(self):
+        return "break"
+
+
+BREAK = _BREAK()
+
+__all__ += ["PASS", "CONTINUE", "BREAK"]
+
+
 class DEF(STATEMENT):
     def __init__(self, name: VAR_I, args: ARGS_I = None, block: BLOCK_I = None, t: FUNC_TYPE_I = None):
         self.name: VAR_O = VAR.parse(name)
@@ -37,6 +60,9 @@ class DEF(STATEMENT):
 
     def __str__(self):
         return f"def {self.name!s}({self.args!s}){self.t!s}:{self.block!s}"
+
+    def CALL(self, *args, **kwargs) -> CALL:
+        return CALL(self.name, ARGS(*args, **kwargs))
 
 
 class CLASS(STATEMENT):
@@ -55,24 +81,36 @@ class CLASS(STATEMENT):
 
 
 class FOR(STATEMENT):
-    def __init__(self, args: ARGS_I, iterator: EXPRESSION, block: BLOCK_I = None, alt: Union[ELSE, ELIF] = None):
+    def __init__(self, args: ARGS_I, iterator: EXPRESSION, block: BLOCK_I = None, alt: ELSE_I = None):
         self.args: ARGS_O = ARGS.parse(args)
         self.iterator: EXPRESSION = iterator
         self.block: BLOCK_O = BLOCK.parse(block)
-        self.alt: Union[ELSE, ELIF] = alt or ELSE()
+        self.alt: ELSE_O = ELSE.parse(alt)
 
     def __str__(self):
         return f"for {self.args!s} in {self.iterator!s}:{self.block!s}{self.alt!s}"
 
+    def ELSE(self, *statements: STATEMENT) -> FOR:
+        if self.alt.block.statements:
+            raise Exception("Cannot apply ELSE on FOR as there's already an ELSE block")
+        else:
+            return FOR(self.args, self.iterator, self.block, ELSE(*statements))
+
 
 class WHILE(STATEMENT):
-    def __init__(self, condition: EXPRESSION, block: BLOCK_I = None, alt: Union[ELSE, ELIF] = None):
+    def __init__(self, condition: EXPRESSION, block: BLOCK_I = None, alt: ELSE_I = None):
         self.condition: EXPRESSION = condition
         self.block: BLOCK_O = BLOCK.parse(block)
-        self.alt: Union[ELSE, ELIF] = alt or ELSE()
+        self.alt: ELSE_O = ELSE.parse(alt)
 
     def __str__(self):
         return f"while {self.condition!s}:{self.block!s}{self.alt!s}"
+
+    def ELSE(self, *statements: STATEMENT) -> WHILE:
+        if self.alt.block.statements:
+            raise Exception("Cannot apply ELSE on WHILE as there's already an ELSE block")
+        else:
+            return WHILE(self.condition, self.block, ELSE(*statements))
 
 
 class IF(STATEMENT):
@@ -84,11 +122,23 @@ class IF(STATEMENT):
     def __str__(self):
         return f"if {self.condition!s}:{self.block!s}{self.alt!s}"
 
+    def ELIF(self, condition: EXPRESSION_I, block: BLOCK_I, alt: ALT_I = None) -> IF:
+        if self.alt.block.statements:
+            raise Exception("Cannot apply ELIF on IF as there's already an ALT block")
+        else:
+            return IF(self.condition, self.block, ELIF(condition, block, alt))
+
+    def ELSE(self, *statements: STATEMENT) -> IF:
+        if self.alt.block.statements:
+            raise Exception("Cannot apply ELSE on IF as there's already an ALT block")
+        else:
+            return IF(self.condition, self.block, ELSE(*statements))
+
 
 class ASSIGN(STATEMENT):
-    def __init__(self, o: OBJECT, v: EXPRESSION):
+    def __init__(self, o: OBJECT, v: EXPRESSION_I):
         self.o: OBJECT = o
-        self.v: EXPRESSION = v
+        self.v: EXPRESSION_I = EXPRESSION.parse(v)
 
     def __str__(self):
         return f"{self.o!s} = {self.v!s}"
@@ -116,15 +166,57 @@ class SETITEM(STATEMENT):
 
         self.alias = ASSIGN(TYPED_OBJECT(GETITEM(o, k), t), v)
 
+    def __str__(self):
+        return f"{self.alias!s}"
+
 
 __all__ += ["STATEMENT", "DEF", "CLASS", "FOR", "WHILE", "IF", "ASSIGN", "SETATTR", "SETITEM"]
+
+
+class IADD(STATEMENT):
+    def __init__(self, o: OBJECT, v: EXPRESSION_I):
+        self.o: OBJECT = o
+        self.v: EXPRESSION_I = EXPRESSION.parse(v)
+
+    def __str__(self):
+        return f"{self.o!s} += {self.v!s}"
+
+
+class ISUB(STATEMENT):
+    def __init__(self, o: OBJECT, v: EXPRESSION_I):
+        self.o: OBJECT = o
+        self.v: EXPRESSION_I = EXPRESSION.parse(v)
+
+    def __str__(self):
+        return f"{self.o!s} -= {self.v!s}"
+
+
+class IMUL(STATEMENT):
+    def __init__(self, o: OBJECT, v: EXPRESSION_I):
+        self.o: OBJECT = o
+        self.v: EXPRESSION_I = EXPRESSION.parse(v)
+
+    def __str__(self):
+        return f"{self.o!s} *= {self.v!s}"
+
+
+class ITRUEDIV(STATEMENT):
+    def __init__(self, o: OBJECT, v: EXPRESSION_I):
+        self.o: OBJECT = o
+        self.v: EXPRESSION_I = EXPRESSION.parse(v)
+
+    def __str__(self):
+        return f"{self.o!s} /= {self.v!s}"
+
+
+__all__ += ["IADD", "ISUB", "IMUL", "ITRUEDIV"]
 
 
 class ALT:
     @classmethod
     def parse(cls, obj: ALT_I) -> ALT_O:
         if obj is None:
-            return None
+            return ELSE()
         elif isinstance(obj, cls):
             return obj
         elif isinstance(obj, IF):
@@ -134,16 +226,37 @@ class ALT:
 
 
 class ELIF(ALT):
-    def __init__(self, condition: EXPRESSION, block: BLOCK_I = None, alt: ALT_I = None):
-        self.condition: EXPRESSION = condition
+    def __init__(self, condition: EXPRESSION_I, block: BLOCK_I = None, alt: ALT_I = None):
+        self.condition: EXPRESSION = EXPRESSION.parse(condition)
         self.block: BLOCK = BLOCK.parse(block)
         self.alt: ALT_O = ALT.parse(alt)
 
     def __str__(self):
         return f"\nelif {self.condition!s}:{self.block!s}{self.alt!s}"
 
+    def ELIF(self, condition: EXPRESSION_I, block: BLOCK_I, alt: ALT_I = None) -> ELIF:
+        if self.alt.block.statements:
+            raise Exception("Cannot apply ELIF on IF as there's already an ALT block")
+        else:
+            return ELIF(self.condition, self.block, ELIF(condition, block, alt))
+
+    def ELSE(self, *statements: STATEMENT) -> ELIF:
+        if self.alt.block.statements:
+            raise Exception("Cannot apply ELSE on ELIF as there's already an ELSE block")
+        else:
+            return ELIF(self.condition, self.block, ELSE(*statements))
+
 
 class ELSE(ALT):
+    @classmethod
+    def parse(cls, obj: ELSE_I) -> ELSE_O:
+        if obj is None:
+            return ELSE()
+        elif isinstance(obj, cls):
+            return obj
+        else:
+            return ELSE(*BLOCK.parse(obj).statements)
+
     def __init__(self, *statements):
         self.block: BLOCK = BLOCK(*statements)
 
@@ -254,10 +367,13 @@ class BLOCK(SCOPE):
     def __str__(self):
         return "\n" + indent(super().__str__() if self.statements else "pass")
 
-    def WHILE(self, condition: CONDITION, alt: ELSE = None) -> WHILE:
+    def WHILE(self, condition: EXPRESSION, alt: ELSE = None) -> WHILE:
         return WHILE(condition, self, alt)
 
-    def IF(self, condition: CONDITION, alt: Union[ELSE, ELIF] = None) -> IF:
+    def FOR(self, args: ARGS_I, iterator: EXPRESSION, alt: ELSE = None) -> FOR:
+        return FOR(args, iterator, self, alt)
+
+    def IF(self, condition: EXPRESSION, alt: Union[ELSE, ELIF] = None) -> IF:
         return IF(condition, self, alt)
 
 
@@ -276,6 +392,12 @@ class EXPRESSION:
         else:
             raise TypeError(type(obj))
 
+    def ASSIGN_TO(self, o: OBJECT, t: TYPE_I = None) -> ASSIGN:
+        if t is None:
+            return ASSIGN(o, self)
+        else:
+            return ASSIGN(TYPED_OBJECT(o, t), self)
+
     def RETURN(self):
         return RETURN(self)
 
@@ -284,6 +406,9 @@ class EXPRESSION:
 
     def RAISE(self):
         return RAISE(self)
+
+    def NOT(self) -> NOT:
+        return NOT(self)
 
     def EQ(self, other: EXPRESSION_I) -> EQ:
         return EQ(self, other)
@@ -320,6 +445,18 @@ class EXPRESSION:
 
     def OR(self, other: EXPRESSION_I) -> OR:
         return OR(self, other)
+
+    def ADD(self, other: EXPRESSION_I) -> ADD:
+        return ADD(self, other)
+
+    def SUB(self, other: EXPRESSION_I) -> SUB:
+        return SUB(self, other)
+
+    def MUL(self, other: EXPRESSION_I) -> MUL:
+        return MUL(self, other)
+
+    def TRUEDIV(self, other: EXPRESSION_I) -> TRUEDIV:
+        return TRUEDIV(self, other)
 
 
 class CONDITION(EXPRESSION):
@@ -361,6 +498,71 @@ class LAMBDA(EXPRESSION):
 __all__ += ["EXPRESSION", "CONDITION", "AND", "OR"]
 
 
+class EXPRESSION_OP2N(EXPRESSION):
+    symbol: str
+
+    def __init__(self, left: EXPRESSION_I, right: EXPRESSION_I):
+        self.left: EXPRESSION_O = EXPRESSION.parse(left)
+        self.right: EXPRESSION_O = EXPRESSION.parse(right)
+
+    def __str__(self):
+        return f"{self.left!s} {self.__class__.symbol!s} {self.right!s}"
+
+
+class ADD(EXPRESSION_OP2N):
+    symbol = '+'
+
+
+class SUB(EXPRESSION_OP2N):
+    symbol = '-'
+
+
+class MUL(EXPRESSION_OP2N):
+    symbol = '*'
+
+
+class TRUEDIV(EXPRESSION_OP2N):
+    symbol = '/'
+
+
+__all__ += ["ADD", "SUB", "MUL", "TRUEDIV"]
+
+
+class COMPREHENSION:
+    def __init__(self, expr: EXPRESSION_I, args: ARGS_I, iterator: EXPRESSION_I):
+        self.expr: EXPRESSION_O = EXPRESSION.parse(expr)
+        self.args: ARGS_O = ARGS.parse(args)
+        self.iterator: EXPRESSION_O = EXPRESSION.parse(iterator)
+
+    def LIST(self) -> LISTCOMP:
+        return LISTCOMP(self)
+
+    def GENE(self) -> GENECOMP:
+        return GENECOMP(self)
+
+    def __str__(self):
+        return f"{self.expr!s} for {self.args!s} in {self.iterator!s}"
+
+
+class GENECOMP(EXPRESSION):
+    def __init__(self, comp: COMPREHENSION):
+        self.comp: COMPREHENSION = comp
+
+    def __str__(self):
+        return f"({self.comp!s})"
+
+
+class LISTCOMP(EXPRESSION):
+    def __init__(self, comp: COMPREHENSION):
+        self.comp: COMPREHENSION = comp
+
+    def __str__(self):
+        return f"[{self.comp!s}]"
+
+
+__all__ += ["COMPREHENSION", "GENECOMP", "LISTCOMP"]
+
+
 class OBJECT(EXPRESSION):
     def SETATTR(self, k, v, t: TYPE_I = None) -> SETATTR:
         return SETATTR(self, k, v, t)
@@ -380,6 +582,18 @@ class OBJECT(EXPRESSION):
     def ASSIGN(self, v, t: TYPE_I = None) -> ASSIGN:
         return ASSIGN(TYPED_OBJECT(self, t), v)
 
+    def IADD(self, v) -> IADD:
+        return IADD(self, v)
+
+    def ISUB(self, v) -> ISUB:
+        return ISUB(self, v)
+
+    def IMUL(self, v) -> IMUL:
+        return IMUL(self, v)
+
+    def ITRUEDIV(self, v) -> ITRUEDIV:
+        return ITRUEDIV(self, v)
+
     @property
     def AS_ARG(self) -> AS_ARG:
         return AS_ARG(self)
@@ -391,6 +605,12 @@ class OBJECT(EXPRESSION):
     @property
     def TYPE_OF(self) -> CALL:
         return VAR("type").CALL(self)
+
+    def METH(self, name: str, *args, **kwargs) -> CALL:
+        return CALL(GETATTR(self, name), ARGS(*args, **kwargs))
+
+    def LEN(self) -> CALL:
+        return VAR("len").CALL(self)
 
 
 class TYPED_OBJECT(OBJECT):
@@ -420,7 +640,7 @@ class GETITEM(OBJECT):
         return f"{self.obj!s}[{self.key!s}]"
 
 
-class CALL(OBJECT):
+class CALL(OBJECT, STATEMENT):
     def __init__(self, obj: OBJECT, args: ARGS = None):
         self.obj: OBJECT = obj
         self.args: ARGS = args or ARGS()
@@ -496,8 +716,8 @@ class FSTR(OBJECT):
 
 
 class LIST(OBJECT):
-    def __init__(self, content: list):
-        self.content: list = content
+    def __init__(self, content: list = None):
+        self.content: list = content or []
 
     def __str__(self):
         if self.content:
@@ -507,8 +727,8 @@ class LIST(OBJECT):
 
 
 class DICT(OBJECT):
-    def __init__(self, content: dict):
-        self.content: dict = content
+    def __init__(self, content: dict = None):
+        self.content: dict = content or {}
 
     def __str__(self):
         if self.content:
@@ -521,8 +741,8 @@ class DICT(OBJECT):
 
 
 class TUPLE(OBJECT):
-    def __init__(self, content: tuple):
-        self.content: tuple = content
+    def __init__(self, content: tuple = None):
+        self.content: tuple = content or ()
 
     def __str__(self):
         if len(self.content) == 0:
@@ -572,6 +792,14 @@ class COMPARISON(CONDITION):
         return f"{self.left!s} {self.__class__.symbol} {self.right!s}"
 
 
+class NOT(CONDITION):
+    def __init__(self, expr: EXPRESSION):
+        self.expr: EXPRESSION = expr
+
+    def __str__(self):
+        return f"not {self.expr!s}"
+
+
 class EQ(COMPARISON):
     symbol = '=='
 
@@ -612,7 +840,7 @@ class IS_NOT(COMPARISON):
     symbol = 'is not'
 
 
-__all__ += ["COMPARISON", "EQ", "NE", "LT", "LE", "GT", "GE", "IN", "NOT_IN", "IS", "IS_NOT"]
+__all__ += ["COMPARISON", "NOT", "EQ", "NE", "LT", "LE", "GT", "GE", "IN", "NOT_IN", "IS", "IS_NOT"]
 
 
 class ARGS:
@@ -662,6 +890,9 @@ class ARG:
 
     def __str__(self):
         return f"{self.to}" if self.v is None else f"{self.to}={self.v}"
+
+
+__all__ += ["ARGS", "ARG"]
 
 
 class IMPORT(STATEMENT):
@@ -736,7 +967,7 @@ class IMPORT(STATEMENT):
 
 
 class MODULE:
-    def __init__(self, name: VAR_I, scope: SCOPE_I):
+    def __init__(self, name: VAR_I, scope: SCOPE_I = None):
         self.name: VAR_O = VAR.parse(name)
         self.scope: SCOPE_O = SCOPE.parse(scope)
 
@@ -825,7 +1056,7 @@ class PACKAGE:
 
         return f"package : '{self.name}/'\n{rt!s}"
 
-    def save(self, root: str, allow_overwrite: bool = False):
+    def save(self, root: str = os.curdir, allow_overwrite: bool = False):
         path = os.path.join(root, str(self.name))
 
         if os.path.exists(path):
@@ -859,6 +1090,9 @@ class METHODS:
         )
 
 
+__all__ += ["IMPORT", "MODULE", "PACKAGE", "METHODS"]
+
+
 ########################################################################################################################
 # SHORTCUT FUNCTIONS
 ########################################################################################################################
@@ -875,12 +1109,15 @@ def EXCEPTION(e) -> CALL:
     return VAR("Exception").CALL(e)
 
 
+__all__ += ["ISINSTANCE", "ISSUBCLASS", "EXCEPTION"]
+
+
 ########################################################################################################################
 # SHORTCUT STRUCTURES
 ########################################################################################################################
 
 
-def SWITCH(cases: List[Tuple[EXPRESSION, BLOCK_I]], default: BLOCK_I = None) -> IF:
+def SWITCH(cases: List[Tuple[EXPRESSION, BLOCK_I]], default: BLOCK_I = None) -> Union[IF, BLOCK]:
     if not cases:
         return BLOCK()
 
@@ -889,6 +1126,35 @@ def SWITCH(cases: List[Tuple[EXPRESSION, BLOCK_I]], default: BLOCK_I = None) -> 
         current = ELIF(condition=condition, block=block, alt=current)
     condition, block = cases[0]
     return IF(condition=condition, block=block, alt=current)
+
+
+def ITER_OVER(index: VAR,
+              elements: OBJECT,
+              element: VAR,
+              statements: Iterator[STATEMENT],
+              element_type: TYPE_I = None) -> WHILE:
+    """
+    Design pattern which can be used for queues | stacks where size change during iteration
+
+    canonical representation :
+
+    > while index < len(elements):
+    >     element: element_type = elements[index]
+    >     index += 1
+    >     ...statements
+
+    """
+    return WHILE(
+        index.LT(elements.LEN()),
+        BLOCK(
+            element.ASSIGN(elements.GETITEM(index), t=element_type),
+            index.IADD(1),
+            *statements
+        )
+    )
+
+
+__all__ += ["SWITCH", "ITER_OVER"]
 
 
 ########################################################################################################################
@@ -987,3 +1253,6 @@ EXPRESSION_O = EXPRESSION
 
 ALT_I = Optional[Union[ALT, IF, BLOCK]]
 ALT_O = Optional[ALT]
+
+ELSE_I = Optional[Union[ELSE, BLOCK]]
+ELSE_O = Optional[ELSE]
