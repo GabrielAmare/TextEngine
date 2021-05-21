@@ -1,5 +1,6 @@
+from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import TypeVar
+from typing import TypeVar, Union
 
 from item_engine import Element, INDEX, T_STATE, INCLUDE, EXCLUDE, CASE
 
@@ -45,7 +46,7 @@ class Token(Element):
 class Lemma(Element):
     data: HashableDict = field(default_factory=HashableDict)
 
-    def develop(self: E, case: CASE, item: Token) -> E:
+    def develop(self: E, case: CASE, item: Union[Token, Lemma]) -> E:
         action, value = case
         data = HashableDict(self.data)
         if action == INCLUDE:
